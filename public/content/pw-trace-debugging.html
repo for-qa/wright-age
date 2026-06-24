@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Debugging with Trace Viewer — Playwright Learning Path</title>
+  <meta name="description" content="Playwright Inspector, Trace Viewer, UI Mode, flaky test debugging, CI artifacts, and e-commerce failure investigation." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">Trace &amp; Debugging</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-debug">
+      <div class="nav-logo"><div class="v">Debug</div><h2>Traces</h2></div>
+      <div class="nav-group">The Problem</div>
+      <a href="#dbg-intro">Debugging Tools</a>
+      <div class="nav-group">Local Debug</div>
+      <a href="#dbg-inspector">Playwright Inspector</a>
+      <a href="#dbg-pause">Breakpoints &amp; PWDEBUG</a>
+      <div class="nav-group">Trace Viewer</div>
+      <a href="#dbg-trace-enable">Enabling Traces</a>
+      <a href="#dbg-trace-viewer">Trace Viewer</a>
+      <a href="#dbg-trace-workflow">Debug Workflow</a>
+      <div class="nav-group">UI Mode</div>
+      <a href="#dbg-ui-mode">UI Mode</a>
+      <div class="nav-group">Flaky Tests</div>
+      <a href="#dbg-flaky">Fixing Flakiness</a>
+      <div class="nav-group">E-Commerce</div>
+      <a href="#dbg-ecommerce">E-Commerce Debug</a>
+      <div class="nav-group">CI</div>
+      <a href="#dbg-ci">CI Debugging</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#dbg-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#dbg-takeaways">Key Takeaways</a>
+      <a href="#dbg-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="dbg-top">
+        <div class="hero-tags">
+          <span class="hero-tag">Trace Viewer</span>
+          <span class="hero-tag">--debug</span>
+          <span class="hero-tag">--ui</span>
+        </div>
+        <h1>Debugging <span>with Traces</span></h1>
+        <p>CI says "Element not found." You have no idea what the page looked like. Playwright's debugging tools are like a <strong>black box flight recorder</strong> for every test run.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">4</div><div class="stat-l">Trace Sections</div></div>
+          <div class="stat"><div class="stat-n">∞</div><div class="stat-l">Replay Steps</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="dbg-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>Debugging with Trace Viewer</h2>
+        <p>When a test fails remotely, you're debugging blind — like diagnosing a car problem from a text message. Traces record <strong>screenshots, DOM, network, and console</strong> at every step so you can rewind and see exactly what happened.</p>
+        <p>Locally, <strong>Inspector</strong> and <strong>UI Mode</strong> let you step through tests like a debugger in your IDE.</p>
+      </div>
+
+      <div class="sec" id="dbg-inspector">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Playwright Inspector</h2>
+        <pre><code># Debug a specific test
+npx playwright test cart.spec.ts --debug
+
+# Debug from line 25
+npx playwright test cart.spec.ts:25 --debug</code></pre>
+        <p>Inspector opens with:</p>
+        <ul>
+          <li><strong>Browser window</strong> — your app live</li>
+          <li><strong>Step panel</strong> — execute one line at a time</li>
+          <li><strong>Pick Locator</strong> — click elements, get suggested locators</li>
+        </ul>
+        <pre><code>// Try locators live in Inspector console
+page.getByRole('button', { name: 'Add to Cart' })
+page.locator('.cart-count').count()</code></pre>
+      </div>
+
+      <div class="sec" id="dbg-pause">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Breakpoints &amp; PWDEBUG</h2>
+        <pre><code>test('checkout flow', async ({ page }) => {
+  await page.goto('/products/laptop');
+  await page.getByRole('button', { name: 'Add to Cart' }).click();
+
+  await page.pause();  // Pauses when run with --debug
+
+  await page.goto('/checkout');
+});
+
+# Enable Inspector for all tests
+PWDEBUG=1 npx playwright test
+
+# Console mode (no GUI)
+PWDEBUG=console npx playwright test</code></pre>
+      </div>
+
+      <div class="sec" id="dbg-trace-enable">
+        <div class="sec-label">⚙️ Configuration</div>
+        <h2>Enabling Traces</h2>
+        <p>Traces are recordings of everything during a test — essential for CI post-mortems.</p>
+        <pre><code>// playwright.config.ts
+export default defineConfig({
+  use: {
+    trace: 'on-first-retry',    // Record on retry (saves CI time)
+    // trace: 'on',             // Always record
+    // trace: 'retain-on-failure', // Keep only failed test traces
+  },
+});</code></pre>
+      </div>
+
+      <div class="sec" id="dbg-trace-viewer">
+        <div class="sec-label">📊 Reference</div>
+        <h2>Trace Viewer</h2>
+        <pre><code>npx playwright show-report
+npx playwright show-trace test-results/cart-spec-ts-add-to-cart/trace.zip</code></pre>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Section</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">What you see</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Timeline</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Screenshots, DOM snapshots, network, console at each step</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Actions</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Each action with timing, locator, pass/fail</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Source</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Test code with current line highlighted</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Network</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">HTTP requests, bodies, timing waterfall</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec" id="dbg-trace-workflow">
+        <div class="sec-label">🔍 Real-Life Example</div>
+        <h2>Debugging "Element not visible"</h2>
+        <ol>
+          <li>Open trace in Trace Viewer</li>
+          <li>Find the failing action on the timeline</li>
+          <li>Click — see screenshot at that moment</li>
+          <li>Check DOM snapshot — is the element there?</li>
+          <li>Check Network — did the API finish?</li>
+          <li>Look at the action before — unexpected overlay?</li>
+        </ol>
+      </div>
+
+      <div class="sec" id="dbg-ui-mode">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>UI Mode</h2>
+        <p>Interactive test development — like a video editor for your test run. Save a file and tests re-run automatically.</p>
+        <pre><code>npx playwright test --ui</code></pre>
+        <ul>
+          <li><strong>Watch mode</strong> — re-run on save</li>
+          <li><strong>Time-travel</strong> — scrub timeline, see page at any action</li>
+          <li><strong>Filtering</strong> — run one file or failed tests only</li>
+          <li><strong>Live locators</strong> — hover actions to see targeted elements</li>
+        </ul>
+      </div>
+
+      <div class="sec" id="dbg-flaky">
+        <div class="sec-label">⚠️ Real-Life Example</div>
+        <h2>Debugging Flaky Tests</h2>
+        <p>Flaky tests pass sometimes, fail sometimes — compare <strong>passing vs failing traces</strong> side by side.</p>
+        <pre><code>// Gather data
+use: { trace: 'on' },
+retries: 3,</code></pre>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">1</div><div class="card-title">Element not stable</div></div>
+          <div class="card-body">
+            <pre><code>// FLAKY
+await page.locator('.notification').click();
+
+// FIXED — wait for visible/stable
+await expect(page.locator('.notification')).toBeVisible();
+await page.locator('.notification').click();</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">2</div><div class="card-title">Stale cart count</div></div>
+          <div class="card-body">
+            <pre><code>// FLAKY
+const count = await page.locator('.cart-count').textContent();
+
+// FIXED
+await expect(page.locator('.cart-count')).toHaveText('1');</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">3</div><div class="card-title">Navigation race</div></div>
+          <div class="card-body">
+            <pre><code>await page.getByRole('link', { name: 'Checkout' }).click();
+await page.waitForURL('**/checkout');
+await expect(page.getByText('Checkout')).toBeVisible();</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">4</div><div class="card-title">Cookie banner blocking</div></div>
+          <div class="card-body">
+            <pre><code>const cookieBanner = page.getByRole('button', { name: 'Accept Cookies' });
+if (await cookieBanner.isVisible({ timeout: 1000 }).catch(() => false)) {
+  await cookieBanner.click();
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="dbg-ecommerce">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>E-Commerce Debugging</h2>
+        <pre><code>// Payment — log requests in trace console
+page.on('request', req => {
+  if (req.url().includes('/api/payment')) console.log('Payment:', req.postData());
+});
+page.on('response', res => {
+  if (res.url().includes('/api/payment')) console.log('Status:', res.status());
+});
+
+// Cart persistence — log storage after each test
+test.afterEach(async ({ context }) => {
+  const storage = await context.storageState();
+  console.log('Cookies:', storage.cookies);
+});</code></pre>
+      </div>
+
+      <div class="sec" id="dbg-ci">
+        <div class="sec-label">🔄 CI</div>
+        <h2>CI Debugging Workflow</h2>
+        <pre><code># GitHub Actions — upload on failure
+- name: Upload traces on failure
+  if: failure()
+  uses: actions/upload-artifact@v4
+  with:
+    name: playwright-traces
+    path: test-results/
+
+# Locally after download
+npx playwright show-trace test-results/*/trace.zip
+npx playwright show-report playwright-report</code></pre>
+      </div>
+
+      <div class="sec" id="dbg-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>No traces in CI:</strong> "Element not found" with zero context.
+            <br>✅ <strong><code>trace: 'on-first-retry'</code> or <code>retain-on-failure</code></strong> + upload artifacts.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Only reading the error message:</strong> Skipping Trace Viewer.
+            <br>✅ <strong>Always open the trace</strong> — screenshot at failure often explains everything.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Adding waitForTimeout to fix flakes:</strong> Masks timing without fixing root cause.
+            <br>✅ <strong>Web-first assertions, waitForURL, dismiss overlays</strong> — use trace to see the race.
+          </li>
+          <li>
+            ❌ <strong>trace: 'on' for every test in CI always:</strong> Huge artifacts, slow runs.
+            <br>✅ <strong>on-first-retry</strong> balances storage vs debuggability.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="dbg-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong>Inspector (<code>--debug</code>)</strong> — step-through, pick locators</li>
+          <li><strong><code>page.pause()</code></strong> — breakpoints in test code</li>
+          <li><strong>Trace Viewer</strong> — screenshots, DOM, network at every step</li>
+          <li><strong>UI Mode (<code>--ui</code>)</strong> — watch mode + time-travel</li>
+          <li><strong>Flaky tests</strong> — compare pass vs fail traces</li>
+          <li><strong>CI</strong> — enable traces, upload artifacts on failure</li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> You can debug any failure — but hundreds of tests run slowly. Next we'll learn <strong>CI/CD and parallel execution</strong> to run tests fast at scale.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="dbg-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Goal</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Command / Setting</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Step-through debug</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test --debug</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Breakpoint in code</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>await page.pause()</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Interactive dev</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test --ui</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">CI-friendly traces</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>trace: 'on-first-retry'</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Open failed run</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright show-trace trace.zip</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Flaky investigation</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Compare pass vs fail traces; check network timing</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">CI artifacts</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Upload <code>test-results/</code> on failure</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

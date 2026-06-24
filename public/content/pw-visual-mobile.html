@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Visual &amp; Mobile Testing — Playwright Learning Path</title>
+  <meta name="description" content="toHaveScreenshot, device emulation, responsive breakpoints, mobile e-commerce UX, masking dynamic content, and CI visual testing." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">Visual &amp; Mobile</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-visual">
+      <div class="nav-logo"><div class="v">Look &amp; Feel</div><h2>Visual</h2></div>
+      <div class="nav-group">Why Visual</div>
+      <a href="#vis-intro">Visual &amp; Mobile</a>
+      <a href="#vis-why">Why It Matters</a>
+      <div class="nav-group">Screenshots</div>
+      <a href="#vis-screenshot">Screenshot Basics</a>
+      <a href="#vis-element">Element Screenshots</a>
+      <a href="#vis-options">Screenshot Options</a>
+      <a href="#vis-dynamic">Dynamic Content</a>
+      <a href="#vis-animations">Animations</a>
+      <div class="nav-group">Mobile</div>
+      <a href="#vis-devices">Device Profiles</a>
+      <a href="#vis-mobile-nav">Mobile Navigation</a>
+      <a href="#vis-mobile-product">Mobile Products</a>
+      <a href="#vis-mobile-checkout">Mobile Checkout</a>
+      <div class="nav-group">Responsive</div>
+      <a href="#vis-responsive">Breakpoints</a>
+      <div class="nav-group">CI</div>
+      <a href="#vis-ci">Visual Testing in CI</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#vis-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#vis-takeaways">Key Takeaways</a>
+      <a href="#vis-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="vis-top">
+        <div class="hero-tags">
+          <span class="hero-tag">toHaveScreenshot</span>
+          <span class="hero-tag">devices</span>
+          <span class="hero-tag">Responsive</span>
+        </div>
+        <h1>Visual <span>&amp; Mobile</span></h1>
+        <p>Functional tests confirm your app <em>works</em>. Visual tests confirm it <em>looks right</em> — critical for e-commerce where design drives conversion.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">100+</div><div class="stat-l">Device Profiles</div></div>
+          <div class="stat"><div class="stat-n">44px</div><div class="stat-l">Min Touch Target</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="vis-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>Visual &amp; Mobile Testing</h2>
+        <p>Imagine inspecting a store window display: the door opens (functional test passes), but the "SALE" sign covers the price tag (visual bug). Shoppers leave without buying.</p>
+        <p><code>toHaveScreenshot()</code> compares today's page to a saved baseline image. Combined with <strong>device emulation</strong>, you catch layout breaks on phones, tablets, and desktops before users do.</p>
+      </div>
+
+      <div class="sec" id="vis-why">
+        <div class="sec-label">⚠️ The Pain</div>
+        <h2>Why Visual Testing Matters for E-Commerce</h2>
+        <p>A CSS change breaks the "Add to Cart" button layout. Functional tests pass — the button still clicks — but:</p>
+        <ul>
+          <li>Button overlaps the price</li>
+          <li>Mobile users can't see it</li>
+          <li>Conversion drops 15%</li>
+        </ul>
+        <p>Visual testing catches these regressions <strong>before production</strong>.</p>
+      </div>
+
+      <div class="sec" id="vis-screenshot">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Screenshot Comparison Testing</h2>
+        <p>First run creates a baseline in <code>*-snapshots/</code>. Later runs pixel-compare against it — like proofreading a printed catalog against the approved design.</p>
+        <pre><code>test('product page visual test', async ({ page }) => {
+  await page.goto('/products/wireless-headphones');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+  await expect(page).toHaveScreenshot('product-page.png');
+});</code></pre>
+      </div>
+
+      <div class="sec" id="vis-element">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>Element-Level Screenshots</h2>
+        <p>Capture just the product card or cart summary — smaller baselines, faster diffs, focused on the component that matters.</p>
+        <pre><code>const productCard = page.getByTestId('product-card').first();
+await expect(productCard).toHaveScreenshot('product-card.png');
+
+await page.goto('/cart');
+const summary = page.getByTestId('cart-summary');
+await expect(summary).toHaveScreenshot('cart-summary.png');</code></pre>
+      </div>
+
+      <div class="sec" id="vis-options">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Screenshot Options</h2>
+        <pre><code>await expect(page).toHaveScreenshot('products-page.png', {
+  fullPage: true,           // Entire scrollable page
+  maxDiffPixels: 100,       // Allow 100 pixels to differ
+  maxDiffPixelRatio: 0.02,  // Or 2% tolerance
+  threshold: 0.3,             // Per-pixel color threshold (0-1)
+});</code></pre>
+      </div>
+
+      <div class="sec" id="vis-dynamic">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Handling Dynamic Content</h2>
+        <p>Stock counts, review totals, and timestamps change every run — mask them like putting sticky notes over moving parts of a photo.</p>
+        <pre><code>await expect(page).toHaveScreenshot('product-detail.png', {
+  mask: [
+    page.getByTestId('stock-count'),
+    page.getByTestId('review-count'),
+    page.locator('.timestamp'),
+  ],
+});
+
+// Wait for lazy-loaded images
+await page.waitForFunction(() => {
+  const images = document.querySelectorAll('img');
+  return Array.from(images).every(img => img.complete);
+});</code></pre>
+      </div>
+
+      <div class="sec" id="vis-animations">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Animations &amp; Visual States</h2>
+        <pre><code>// Freeze animations for stable screenshots
+await page.addStyleTag({
+  content: `*, *::before, *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }`,
+});
+
+// Capture hover / focus states
+await page.getByRole('button', { name: 'Add to Cart' }).hover();
+await expect(page.getByRole('button', { name: 'Add to Cart' }))
+  .toHaveScreenshot('add-to-cart-hover.png');</code></pre>
+      </div>
+
+      <div class="sec" id="vis-devices">
+        <div class="sec-label">📱 Real-Life Example</div>
+        <h2>Mobile Device Emulation</h2>
+        <p>Playwright ships <strong>100+ device profiles</strong> — viewport, user agent, touch, and scale factor preconfigured.</p>
+        <pre><code>import { test, devices } from '@playwright/test';
+
+test.use({ ...devices['iPhone 13'] });
+
+test('mobile product page', async ({ page }) => {
+  await page.goto('/products/laptop');
+  // Viewport 390×844, Safari UA, touch enabled
+  await expect(page.getByRole('button', { name: 'Add to Cart' })).toBeVisible();
+});
+
+// playwright.config.ts — run same tests on many devices
+projects: [
+  { name: 'Desktop Chrome', use: { ...devices['Desktop Chrome'] } },
+  { name: 'Mobile Safari', use: { ...devices['iPhone 13'] } },
+  { name: 'iPad', use: { ...devices['iPad Pro 11'] } },
+]</code></pre>
+      </div>
+
+      <div class="sec" id="vis-mobile-nav">
+        <div class="sec-label">📱 Real-Life Example</div>
+        <h2>Mobile Navigation</h2>
+        <pre><code>test.use({ ...devices['iPhone 13'] });
+
+test('hamburger menu works', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByRole('navigation').getByRole('link', { name: 'Products' }))
+    .not.toBeVisible();
+
+  const hamburger = page.getByRole('button', { name: 'Menu' });
+  await hamburger.click();
+
+  await expect(page.getByRole('link', { name: 'Cart' })).toBeVisible();
+});</code></pre>
+      </div>
+
+      <div class="sec" id="vis-mobile-product">
+        <div class="sec-label">📱 Real-Life Example</div>
+        <h2>Mobile Product Experience</h2>
+        <pre><code>// Sticky add-to-cart after scroll
+await page.goto('/products/laptop');
+await page.evaluate(() => window.scrollBy(0, 500));
+
+const stickyButton = page.getByTestId('sticky-add-to-cart');
+await expect(stickyButton).toBeVisible();
+await stickyButton.click();
+await expect(page.getByText('Added to cart')).toBeVisible();</code></pre>
+      </div>
+
+      <div class="sec" id="vis-mobile-checkout">
+        <div class="sec-label">📱 Real-Life Example</div>
+        <h2>Mobile Checkout</h2>
+        <p>Touch targets should be at least <strong>44×44px</strong> — Apple's recommended minimum for fingers, not mouse cursors.</p>
+        <pre><code>const emailInput = page.getByLabel('Email');
+const inputBox = await emailInput.boundingBox();
+const viewport = page.viewportSize();
+expect(inputBox?.width).toBeGreaterThan((viewport?.width || 0) * 0.8);
+
+const payButton = page.getByRole('button', { name: 'Pay Now' });
+const box = await payButton.boundingBox();
+expect(box?.height).toBeGreaterThanOrEqual(44);
+expect(box?.width).toBeGreaterThanOrEqual(44);</code></pre>
+      </div>
+
+      <div class="sec" id="vis-responsive">
+        <div class="sec-label">📐 Real-Life Example</div>
+        <h2>Responsive Design Testing</h2>
+        <pre><code>const breakpoints = [
+  { name: 'mobile', width: 375, height: 667 },
+  { name: 'tablet', width: 768, height: 1024 },
+  { name: 'desktop', width: 1280, height: 800 },
+];
+
+for (const bp of breakpoints) {
+  test(`product grid at ${bp.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: bp.width, height: bp.height });
+    await page.goto('/products');
+    await expect(page).toHaveScreenshot(`product-grid-${bp.name}.png`);
+  });
+}
+
+// Or verify CSS grid columns programmatically
+await page.setViewportSize({ width: 1280, height: 800 });
+let cols = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+expect(cols).toBe(4);  // desktop: 4 columns</code></pre>
+      </div>
+
+      <div class="sec" id="vis-ci">
+        <div class="sec-label">🐳 CI</div>
+        <h2>Visual Testing in CI</h2>
+        <p>Different OSes render fonts and anti-aliasing differently — run visual tests in a <strong>Docker Playwright image</strong> for consistent baselines.</p>
+        <pre><code>// playwright.config.ts
+expect: {
+  toHaveScreenshot: {
+    maxDiffPixelRatio: 0.05,
+    animations: 'disabled',
+    caret: 'hide',
+  },
+},
+
+// Snapshots are per-platform by default:
+// product-page-chromium-linux.png vs product-page-chromium-darwin.png
+
+// Docker: mcr.microsoft.com/playwright:v1.40.0-jammy
+docker run --rm -v $(pwd):/app -w /app mcr.microsoft.com/playwright:v1.40.0-jammy npx playwright test</code></pre>
+      </div>
+
+      <div class="sec" id="vis-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Screenshot before content loads:</strong> Comparing half-loaded pages.
+            <br>✅ <strong>Wait for headings, images, spinners hidden</strong> before <code>toHaveScreenshot</code>.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>No masking on dynamic counters:</strong> "Only 5 left!" fails every run.
+            <br>✅ <strong>Mask stock, timestamps, ads</strong> or freeze animations.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Updating baselines on Mac, running CI on Linux:</strong> Font rendering diffs flood failures.
+            <br>✅ <strong>Generate baselines in Docker</strong> — same image as CI.
+          </li>
+          <li>
+            ❌ <strong>Only desktop visual tests for a mobile-first shop:</strong> Hamburger menu bugs slip through.
+            <br>✅ <strong>Projects per device</strong> — iPhone, Pixel, iPad at minimum.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="vis-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong><code>toHaveScreenshot()</code></strong> compares against baseline images</li>
+          <li><strong>Mask dynamic content</strong> — timestamps, counters, ads</li>
+          <li><strong>100+ device profiles</strong> built into Playwright</li>
+          <li><strong>Test breakpoints</strong> systematically for responsive design</li>
+          <li><strong>Mobile UX</strong> — touch targets, hamburger menus, sticky CTAs</li>
+          <li><strong>Docker in CI</strong> for consistent screenshot rendering</li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> Visual tests fail — but why? Next we'll learn <strong>debugging with Trace Viewer</strong> to see exactly what happened in any test.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="vis-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Goal</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Pattern</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Full page baseline</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>expect(page).toHaveScreenshot('name.png')</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Component only</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>expect(locator).toHaveScreenshot()</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Dynamic counters</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>mask: [locator, ...]</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">iPhone test</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>test.use({ ...devices['iPhone 13'] })</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Breakpoint sweep</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>setViewportSize</code> + screenshot per width</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Touch target check</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>boundingBox()</code> ≥ 44px</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Stable CI baselines</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Playwright Docker image + <code>animations: 'disabled'</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

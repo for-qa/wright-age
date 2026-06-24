@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Setup &amp; First Test — Playwright Learning Path</title>
+  <meta name="description" content="Install Playwright, write your first e-commerce test, run it in multiple modes, and configure your project." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">Setup &amp; First Test</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-setup-first-test">
+      <div class="nav-logo"><div class="v">Setup</div><h2>First Test</h2></div>
+      <div class="nav-group">Basics</div>
+      <a href="#sf-intro">Setup &amp; First Test</a>
+      <a href="#sf-prerequisites">Prerequisites</a>
+      <a href="#sf-install">Installation</a>
+      <a href="#sf-browsers">What Gets Installed</a>
+      <div class="nav-group">Project</div>
+      <a href="#sf-structure">Project Structure</a>
+      <a href="#sf-config">The Config File</a>
+      <div class="nav-group">Your First Test</div>
+      <a href="#sf-first-test">First E-Commerce Test</a>
+      <a href="#sf-ecommerce">Full Checkout Flow</a>
+      <div class="nav-group">Running Tests</div>
+      <a href="#sf-run">Running Tests</a>
+      <a href="#sf-output">Understanding Output</a>
+      <div class="nav-group">E-Commerce</div>
+      <a href="#sf-ecom-config">E-Commerce Config</a>
+      <a href="#sf-scripts">package.json Scripts</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#sf-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#sf-takeaways">Key Takeaways</a>
+      <a href="#sf-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="sf-top">
+        <div class="hero-tags">
+          <span class="hero-tag">Install</span>
+          <span class="hero-tag">Sauce Demo</span>
+          <span class="hero-tag">First Test</span>
+        </div>
+        <h1>Setup <span>&amp; First Test</span></h1>
+        <p>Let's get Playwright running and write your first test against a real e-commerce scenario.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">3</div><div class="stat-l">Browsers</div></div>
+          <div class="stat"><div class="stat-n">6</div><div class="stat-l">Run Modes</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="sf-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>Setup &amp; First Test</h2>
+        <p>This lesson is your <strong>day-one hands-on start</strong>. By the end, you'll have Playwright installed, a real checkout test running against a public demo store, and a config file tuned for e-commerce.</p>
+        <p>Think of it like setting up a new kitchen before cooking — install the appliances (browsers), lay out your workspace (project folders), then cook your first meal (run a test).</p>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p>We use <strong>Sauce Demo</strong> (<code>saucedemo.com</code>) — a free public e-commerce practice site. No signup needed.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="sf-prerequisites">
+        <div class="sec-label">📋 Before You Start</div>
+        <h2>Prerequisites</h2>
+        <p>You need <strong>Node.js 18 or higher</strong> — that's the engine that runs Playwright on your machine, like electricity for your kitchen appliances.</p>
+        <pre><code>node --version
+# Should show v18.x.x or higher</code></pre>
+      </div>
+
+      <div class="sec" id="sf-install">
+        <div class="sec-label">🏪 Real-Life Example</div>
+        <h2>Installation</h2>
+        <p>Installing Playwright is like buying a <strong>starter kit</strong> — one command gives you the test runner, example files, config, and browser downloads.</p>
+
+        <div class="card ph1-card">
+          <div class="card-head">
+            <div class="card-num">1</div>
+            <div class="card-title">Option 1: New Project (Recommended)</div>
+            <span class="card-badge">Learning</span>
+          </div>
+          <div class="card-body">
+            <pre><code>mkdir ecommerce-tests
+cd ecommerce-tests
+npm init -y
+npm init playwright@latest</code></pre>
+            <p style="margin-top: 1rem;">The wizard asks a few questions — pick TypeScript, put tests in <code>tests/</code>, and say yes to installing browsers:</p>
+            <pre><code>✔ Do you want to use TypeScript or JavaScript? › TypeScript
+✔ Where to put your end-to-end tests? › tests
+✔ Add a GitHub Actions workflow? › true
+✔ Install Playwright browsers? › true</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head">
+            <div class="card-num">2</div>
+            <div class="card-title">Option 2: Existing Project</div>
+            <span class="card-badge">Add-on</span>
+          </div>
+          <div class="card-body">
+            <pre><code>npm install -D @playwright/test
+npx playwright install</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="sf-browsers">
+        <div class="sec-label">📊 What You Get</div>
+        <h2>What Gets Installed?</h2>
+        <p>When you run <code>npx playwright install</code>, Playwright downloads its own browser copies — like a film studio keeping exact camera models on set, not whatever happens to be in your pocket.</p>
+        <p>These are <strong>not</strong> your everyday Chrome or Safari. Playwright installs specific versions it has tested against.</p>
+
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Browser</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Engine</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Size</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Chromium</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Chrome / Edge</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~280 MB</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Firefox</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Mozilla</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~250 MB</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">WebKit</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Safari</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~180 MB</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec" id="sf-structure">
+        <div class="sec-label">📁 Organization</div>
+        <h2>Project Structure</h2>
+        <p>After setup, your folder is like a <strong>restaurant kitchen</strong> — recipes in <code>tests/</code>, settings on the wall in <code>playwright.config.ts</code>, and sample dishes in <code>tests-examples/</code>.</p>
+        <pre><code>ecommerce-tests/
+├── tests/
+│   └── example.spec.ts      # Your test files live here
+├── tests-examples/
+│   └── demo-todo-app.spec.ts
+├── playwright.config.ts     # Global settings
+├── package.json
+└── package-lock.json</code></pre>
+      </div>
+
+      <div class="sec" id="sf-config">
+        <div class="sec-label">⚙️ Setup</div>
+        <h2>The Config File</h2>
+        <p><code>playwright.config.ts</code> is the <strong>control panel</strong> for your whole test suite — which browsers, how long to wait, what to capture on failure. Set it once, every test inherits the rules.</p>
+
+        <div class="card ph3-card">
+          <div class="card-head">
+            <div class="card-num">3</div>
+            <div class="card-title">Default Config</div>
+          </div>
+          <div class="card-body">
+            <pre><code>import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  use: {
+    baseURL: 'https://shop.example.com',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
+});</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="sf-first-test">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Your First E-Commerce Test</h2>
+        <p>A test is a <strong>shopping checklist</strong> written in code — go to the store, look for the product, confirm the price is right. Delete the example files and create <code>tests/product-page.spec.ts</code>:</p>
+
+        <div class="card ph4-card">
+          <div class="card-head">
+            <div class="card-num">4</div>
+            <div class="card-title">Simple Smoke Test</div>
+          </div>
+          <div class="card-body">
+            <pre><code>import { test, expect } from '@playwright/test';
+
+test.describe('Product Page', () => {
+  test('displays product details correctly', async ({ page }) => {
+    await page.goto('https://demo.playwright.dev/svgomg');
+  // Replace with your actual e-commerce URL when ready
+
+    await expect(page).toHaveTitle(/SVGOMG/);
+  });
+});</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="sf-ecommerce">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>Full E-Commerce Flow</h2>
+        <p>Now the real thing — login, browse, add to cart, and checkout on Sauce Demo. It's like being a mystery shopper: follow the customer journey and verify every step worked.</p>
+        <p>Create <code>tests/ecommerce.spec.ts</code>:</p>
+
+        <div class="card ph1-card">
+          <div class="card-head">
+            <div class="card-num">5</div>
+            <div class="card-title">E-Commerce Test Suite</div>
+            <span class="card-badge">Sauce Demo</span>
+          </div>
+          <div class="card-body">
+            <pre><code>import { test, expect } from '@playwright/test';
+
+const BASE_URL = 'https://www.saucedemo.com';
+
+test.describe('E-Commerce Product Flow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BASE_URL);
+    await page.getByPlaceholder('Username').fill('standard_user');
+    await page.getByPlaceholder('Password').fill('secret_sauce');
+    await page.getByRole('button', { name: 'Login' }).click();
+    await expect(page.getByText('Products')).toBeVisible();
+  });
+
+  test('can view product details', async ({ page }) => {
+    await page.getByText('Sauce Labs Backpack').click();
+    await expect(page.getByText('Sauce Labs Backpack')).toBeVisible();
+    await expect(page.getByText('$29.99')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add to cart' })).toBeVisible();
+  });
+
+  test('can add product to cart', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add to cart' }).first().click();
+    await expect(page.locator('.shopping_cart_badge')).toHaveText('1');
+  });
+
+  test('can complete checkout flow', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add to cart' }).first().click();
+    await page.locator('.shopping_cart_link').click();
+    await expect(page.getByText('Your Cart')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Checkout' }).click();
+    await page.getByPlaceholder('First Name').fill('John');
+    await page.getByPlaceholder('Last Name').fill('Doe');
+    await page.getByPlaceholder('Zip/Postal Code').fill('12345');
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByText('Checkout: Overview')).toBeVisible();
+    await page.getByRole('button', { name: 'Finish' }).click();
+    await expect(page.getByText('Thank you for your order!')).toBeVisible();
+  });
+});</code></pre>
+          </div>
+        </div>
+
+        <div class="note note-tip">
+          <span class="note-i">✓</span>
+          <p><strong>Quick tip:</strong> <code>beforeEach</code> logs in before every test — like unlocking the store door once before each mystery-shopping round, not re-locking between aisles.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="sf-run">
+        <div class="sec-label">▶️ Action</div>
+        <h2>Running Tests</h2>
+        <p>Running tests is like choosing how to watch a sports game — highlights only (headless), live in the stadium (headed), or replay with commentary (UI mode).</p>
+
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Command</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">What it does</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Run all tests (headless)</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test tests/ecommerce.spec.ts</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Run one file</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test --headed</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Watch the browser</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test --ui</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Interactive UI mode</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test -g "can add product to cart"</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Run one test by name</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test --project=firefox</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Run in Firefox only</td></tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top: 1rem;">Example output:</p>
+        <pre><code>Running 3 tests using 3 workers
+
+  ✓ [chromium] tests/ecommerce.spec.ts:15:7 › can view product details (2.3s)
+  ✓ [chromium] tests/ecommerce.spec.ts:24:7 › can add product to cart (1.8s)
+  ✓ [chromium] tests/ecommerce.spec.ts:31:7 › can complete checkout flow (3.1s)
+
+  3 passed (4.2s)</code></pre>
+      </div>
+
+      <div class="sec" id="sf-output">
+        <div class="sec-label">📊 Reading Results</div>
+        <h2>Understanding Test Output</h2>
+        <p>Open the HTML report after a run — it's like a <strong>scorecard with instant replay</strong>:</p>
+        <pre><code>npx playwright show-report</code></pre>
+        <p>The report shows pass/fail status, duration, screenshots on failure, and traces (if enabled).</p>
+
+        <p>Reading the console line by line:</p>
+        <pre><code>Running 3 tests using 3 workers
+              ↑              ↑
+         Total tests    Parallel processes
+
+  ✓ [chromium] tests/ecommerce.spec.ts:15:7 › can view product details
+    ↑           ↑                      ↑
+  Browser    File path            Line number</code></pre>
+
+        <p><strong>UI mode</strong> (<code>--ui</code>) lets you watch tests live, see DOM snapshots at each step, filter tests, and time-travel through execution — great for learning.</p>
+      </div>
+
+      <div class="sec" id="sf-ecom-config">
+        <div class="sec-label">🛒 E-Commerce</div>
+        <h2>Project Configuration for E-Commerce</h2>
+        <p>Checkout flows are slow — payment pages, shipping forms, inventory checks. Your config needs <strong>longer patience</strong>, like giving a busy restaurant more time before you assume the order failed.</p>
+
+        <div class="card ph2-card">
+          <div class="card-head">
+            <div class="card-num">6</div>
+            <div class="card-title">E-Commerce Tuned Config</div>
+          </div>
+          <div class="card-body">
+            <pre><code>import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: [['html'], ['list']],
+  timeout: 60000,
+
+  use: {
+    baseURL: process.env.BASE_URL || 'https://www.saucedemo.com',
+    screenshot: 'only-on-failure',
+    video: 'on-first-retry',
+    trace: 'on-first-retry',
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
+  },
+
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
+    { name: 'mobile-safari', use: { ...devices['iPhone 13'] } },
+  ],
+});</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="sf-scripts">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Useful Scripts in package.json</h2>
+        <p>Shortcuts in <code>package.json</code> are like <strong>speed-dial buttons</strong> — one tap instead of typing the full command every time.</p>
+        <pre><code>{
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:chrome": "playwright test --project=chromium",
+    "test:mobile": "playwright test --project=mobile-chrome --project=mobile-safari",
+    "report": "playwright show-report"
+  }
+}</code></pre>
+        <pre><code>npm test              # Run all tests
+npm run test:headed   # Watch tests run
+npm run test:ui       # Interactive UI mode
+npm run test:mobile   # Mobile browser tests only</code></pre>
+      </div>
+
+      <div class="sec" id="sf-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>"Browser not found" error:</strong> You skipped browser install or deleted the cache.
+            <br>✅ Run <code>npx playwright install</code> to download browsers again.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Timeout errors on checkout:</strong> Default 30s isn't enough for slow payment pages.
+            <br>✅ Raise <code>actionTimeout</code> and <code>navigationTimeout</code> in config for e-commerce flows.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Tests pass locally, fail in CI:</strong> Your laptop is fast; CI runners are slower.
+            <br>✅ Enable <code>trace: 'on'</code> in CI and download artifacts to debug with Trace Viewer.
+          </li>
+          <li>
+            ❌ <strong>Using brittle CSS classes like <code>.shopping_cart_badge</code>:</strong> Works today, breaks when devs refactor.
+            <br>✅ We'll fix this in the next lesson with resilient locator strategies — for now, notice the problem.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="sf-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong>Installation is simple:</strong> <code>npm init playwright@latest</code> handles everything</li>
+          <li><strong>Browsers are managed:</strong> Playwright installs and updates its own copies</li>
+          <li><strong>Config is powerful:</strong> Control timeouts, browsers, reporters, and failure capture</li>
+          <li><strong>Multiple run modes:</strong> Headless, headed, UI mode, debug mode</li>
+          <li><strong>E-commerce ready:</strong> Longer timeouts and mobile projects matter for shop sites</li>
+          <li><strong>HTML reporter:</strong> Built-in beautiful test reports with <code>show-report</code></li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> You've written tests, but locators like <code>.shopping_cart_badge</code> are brittle. Next we'll learn locator strategies that don't break when developers refactor.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="sf-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Command</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npm init playwright@latest</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Scaffold new project + install browsers</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright install</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Download Chromium, Firefox, WebKit</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Run all tests headless</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test --ui</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Interactive UI mode</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test --headed</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Watch browser while tests run</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright show-report</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Open HTML test report</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>playwright.config.ts</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Browsers, timeouts, baseURL, reporters</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

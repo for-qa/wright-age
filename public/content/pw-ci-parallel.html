@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CI/CD &amp; Parallel Execution — Playwright Learning Path</title>
+  <meta name="description" content="GitHub Actions, workers, sharding, blob reports, test tags, CI best practices, and scaling e-commerce Playwright suites." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">CI/CD &amp; Parallel</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-ci">
+      <div class="nav-logo"><div class="v">Scale</div><h2>CI/CD</h2></div>
+      <div class="nav-group">The Problem</div>
+      <a href="#ci-intro">CI/CD &amp; Parallel</a>
+      <div class="nav-group">GitHub Actions</div>
+      <a href="#ci-github">GitHub Actions</a>
+      <div class="nav-group">Parallelism</div>
+      <a href="#ci-workers">Workers</a>
+      <a href="#ci-sharding">Test Sharding</a>
+      <div class="nav-group">Configuration</div>
+      <a href="#ci-config">Production Config</a>
+      <a href="#ci-tags">Test Tags</a>
+      <div class="nav-group">Best Practices</div>
+      <a href="#ci-practices">CI Best Practices</a>
+      <a href="#ci-performance">Performance</a>
+      <a href="#ci-monitoring">Test Health</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#ci-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#ci-takeaways">Key Takeaways</a>
+      <a href="#ci-complete">Course Complete</a>
+      <a href="#ci-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="ci-top">
+        <div class="hero-tags">
+          <span class="hero-tag">GitHub Actions</span>
+          <span class="hero-tag">Sharding</span>
+          <span class="hero-tag">Workers</span>
+        </div>
+        <h1>CI/CD <span>&amp; Parallel</span></h1>
+        <p>200 tests × 12 seconds = 40 minutes sequential. That's too slow for PR feedback. Let's get it under <strong>5 minutes</strong>.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">40→5</div><div class="stat-l">Minutes</div></div>
+          <div class="stat"><div class="stat-n">16×</div><div class="stat-l">With Shards + Workers</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="ci-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>CI/CD &amp; Parallel Execution</h2>
+        <p>Think of a checkout line at a grocery store: one cashier (sequential) vs four lanes (workers) vs four stores in the city (sharding). Playwright scales the same way — <strong>workers</strong> parallelize on one machine; <strong>shards</strong> split across multiple CI runners.</p>
+        <p>GitHub Actions runs your suite on every push and PR — with artifacts, traces, and merged reports when tests fail.</p>
+      </div>
+
+      <div class="sec" id="ci-github">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>GitHub Actions Setup</h2>
+        <pre><code># .github/workflows/playwright.yml
+name: Playwright Tests
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: test-results/</code></pre>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">🐳</div><div class="card-title">Official Docker image</div></div>
+          <div class="card-body">
+            <pre><code>container:
+  image: mcr.microsoft.com/playwright:v1.40.0-jammy
+# Browsers pre-installed — skip playwright install step</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="ci-workers">
+        <div class="sec-label">⚙️ How It Works</div>
+        <h2>Parallel Workers</h2>
+        <p>Each worker is a separate process with its own browser. Tests are distributed automatically; results merge into one report.</p>
+        <pre><code>export default defineConfig({
+  workers: process.env.CI ? 1 : undefined,  // 1 per shard in CI
+  // workers: 4,
+  // workers: '50%',
+  fullyParallel: true,
+});
+
+// Parallel by default within describe
+test('add item', async ({ page }) => { /* worker A */ });
+test('remove item', async ({ page }) => { /* worker B */ });
+
+// Serial when tests share state
+test.describe.configure({ mode: 'serial' });
+test.describe('Checkout Flow', () => {
+  test('fill shipping', async ({ page }) => { /* same worker */ });
+  test('confirm order', async ({ page }) => { /* same worker */ });
+});</code></pre>
+      </div>
+
+      <div class="sec" id="ci-sharding">
+        <div class="sec-label">🔄 Real-Life Example</div>
+        <h2>Test Sharding</h2>
+        <p>Four CI machines each run 25% of the suite — like four assembly lines building one car together.</p>
+        <pre><code>strategy:
+  fail-fast: false
+  matrix:
+    shardIndex: [1, 2, 3, 4]
+    shardTotal: [4]
+
+- run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+
+# Blob reporter per shard, then merge:
+reporter: process.env.CI ? [['blob'], ['github']] : [['html'], ['list']]
+
+# merge-reports job
+- run: npx playwright merge-reports --reporter html ./all-blob-reports</code></pre>
+      </div>
+
+      <div class="sec" id="ci-config">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>E-Commerce Production Config</h2>
+        <pre><code>const isCI = !!process.env.CI;
+
+export default defineConfig({
+  fullyParallel: true,
+  workers: isCI ? 1 : undefined,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  timeout: 60000,
+
+  reporter: isCI
+    ? [['blob'], ['github'], ['json', { outputFile: 'test-results.json' }]]
+    : [['html'], ['list']],
+
+  use: {
+    baseURL: process.env.BASE_URL || 'https://staging.shop.example.com',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'on-first-retry',
+  },
+
+  projects: [
+    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], storageState: 'playwright/.auth/user.json' },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'], storageState: 'playwright/.auth/user.json' },
+      dependencies: ['setup'],
+      grep: /@smoke/,
+    },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'], storageState: 'playwright/.auth/user.json' },
+      dependencies: ['setup'],
+      grep: /@mobile/,
+    },
+  ],
+});</code></pre>
+      </div>
+
+      <div class="sec" id="ci-tags">
+        <div class="sec-label">🏷️ Real-Life Example</div>
+        <h2>Test Tagging</h2>
+        <pre><code>test('@smoke checkout completes', async ({ page }) => { /* all browsers */ });
+test('@mobile sticky CTA', async ({ page }) => { /* mobile project */ });
+test('can apply promo code', async ({ page }) => { /* chromium default */ });
+
+# CLI
+npx playwright test --grep @smoke
+npx playwright test --grep-invert @slow
+npx playwright test --project=mobile-chrome</code></pre>
+      </div>
+
+      <div class="sec" id="ci-practices">
+        <div class="sec-label">✅ Best Practices</div>
+        <h2>CI Best Practices</h2>
+        <ul>
+          <li><strong>Cache browsers</strong> — <code>~/.cache/ms-playwright</code> keyed on lockfile</li>
+          <li><strong>Secrets for staging</strong> — <code>BASE_URL</code>, test user credentials</li>
+          <li><strong>Smoke then full</strong> — fast @smoke gate before 4-shard full suite</li>
+          <li><strong>Nightly cron</strong> — all browsers at 2 AM UTC</li>
+          <li><strong>PR annotations</strong> — <code>--reporter=github</code> inline on diffs</li>
+        </ul>
+      </div>
+
+      <div class="sec" id="ci-performance">
+        <div class="sec-label">📊 Comparison</div>
+        <h2>Performance Optimization</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Technique</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Impact</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">When</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">API authentication</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">3–5s per test</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Always</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">API test data setup</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">2–10s per test</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Always</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Parallel workers</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">2–4× faster</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Always</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Sharding</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">4–10× faster</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">50+ tests</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Skip visual in PR</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">30–50% faster</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Large suites</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Before:</strong> 200 tests × 12s = ~40 min sequential.<br>
+        <strong>After:</strong> API auth + setup + 4 shards × 4 workers ≈ <strong>5 minutes</strong>.</p>
+      </div>
+
+      <div class="sec" id="ci-monitoring">
+        <div class="sec-label">📈 Monitoring</div>
+        <h2>Test Health</h2>
+        <pre><code>reporter: [['json', { outputFile: 'results.json' }]]
+
+// Find flaky: specs with multiple results (retries)
+const flaky = results.suites.flatMap(s => s.specs)
+  .filter(spec => spec.tests.some(t => t.results.length > 1));
+
+# GitHub job summary
+npx playwright test --reporter=markdown >> $GITHUB_STEP_SUMMARY</code></pre>
+      </div>
+
+      <div class="sec" id="ci-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Parallel tests sharing cart/session state:</strong> Worker A clears cart Worker B needs.
+            <br>✅ <strong>Isolated test data per test</strong> or <code>mode: 'serial'</code> for dependent flows.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Many workers + many shards without tuning:</strong> Overwhelming staging server.
+            <br>✅ <strong>workers: 1 per shard in CI</strong> — scale machines, not processes per machine.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Forgetting blob reporter when sharding:</strong> Can't merge HTML reports.
+            <br>✅ <strong><code>['blob']</code> reporter</strong> + <code>merge-reports</code> job.
+          </li>
+          <li>
+            ❌ <strong>Leaving <code>test.only</code> in code:</strong> CI runs one test, green build lies.
+            <br>✅ <strong><code>forbidOnly: isCI</code></strong> fails the build.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="ci-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong>GitHub Actions</strong> integrates seamlessly with Playwright</li>
+          <li><strong>Workers</strong> parallelize within a machine</li>
+          <li><strong>Sharding</strong> distributes across machines — unlimited scale</li>
+          <li><strong>Blob reporter</strong> enables merging sharded reports</li>
+          <li><strong>Tags</strong> — <code>@smoke</code>, <code>@mobile</code> for selective runs</li>
+          <li><strong>Cache browsers</strong> — faster CI installs</li>
+          <li><strong>API setup</strong> — eliminate slow UI login per test</li>
+          <li><strong>Monitor flakiness</strong> — JSON results + retries analysis</li>
+        </ul>
+      </div>
+
+      <div class="sec" id="ci-complete">
+        <div class="sec-label">🎓 Congratulations</div>
+        <h2>Course Complete</h2>
+        <p>You've learned the full Playwright e-commerce testing path:</p>
+        <ol>
+          <li>Why Playwright beats Selenium</li>
+          <li>Setup &amp; first test</li>
+          <li>Locator strategies</li>
+          <li>Auto-wait &amp; web-first assertions</li>
+          <li>Page Object Model</li>
+          <li>API testing &amp; hybrid workflows</li>
+          <li>Network mocking</li>
+          <li>Visual &amp; mobile testing</li>
+          <li>Debugging with Trace Viewer</li>
+          <li>CI/CD &amp; parallel execution</li>
+        </ol>
+        <p>You're ready to build a <strong>world-class e-commerce test automation suite</strong>. Happy testing!</p>
+      </div>
+
+      <div class="sec" id="ci-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Goal</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Command / Config</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Run shard 2 of 4</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright test --shard=2/4</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Smoke tests only</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>--grep @smoke</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Merge shard reports</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>npx playwright merge-reports ./all-blob-reports</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">CI blob reporter</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>reporter: [['blob'], ['github']]</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Serial dependent tests</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>test.describe.configure({ mode: 'serial' })</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Block test.only in CI</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>forbidOnly: !!process.env.CI</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Docker CI image</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>mcr.microsoft.com/playwright:v1.40.0-jammy</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auto-Wait &amp; Web-First Assertions — Playwright Learning Path</title>
+  <meta name="description" content="Playwright auto-wait, actionability checks, web-first assertions, soft expects, timeouts, and e-commerce async patterns." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">Auto-Wait &amp; Assertions</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-auto-wait">
+      <div class="nav-logo"><div class="v">Assertions</div><h2>Auto-Wait</h2></div>
+      <div class="nav-group">The Problem</div>
+      <a href="#aw-intro">Auto-Wait &amp; Assertions</a>
+      <a href="#aw-race">Race Conditions</a>
+      <div class="nav-group">How It Works</div>
+      <a href="#aw-how">How Auto-Wait Works</a>
+      <a href="#aw-actionability">Actionability Table</a>
+      <a href="#aw-ecommerce-actions">E-Commerce Actions</a>
+      <div class="nav-group">Assertions</div>
+      <a href="#aw-web-first">Web-First Assertions</a>
+      <a href="#aw-assertions-list">Assertion APIs</a>
+      <a href="#aw-ecommerce-assertions">E-Commerce Flow</a>
+      <a href="#aw-soft">Soft Assertions</a>
+      <div class="nav-group">Timeouts</div>
+      <a href="#aw-timeouts">Custom Timeouts</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#aw-antipatterns">Anti-Patterns</a>
+      <a href="#aw-explicit">Explicit Waits</a>
+      <a href="#aw-realworld">Real-World Patterns</a>
+      <a href="#aw-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#aw-takeaways">Key Takeaways</a>
+      <a href="#aw-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="aw-top">
+        <div class="hero-tags">
+          <span class="hero-tag">Auto-Wait</span>
+          <span class="hero-tag">expect()</span>
+          <span class="hero-tag">E-Commerce</span>
+        </div>
+        <h1>Auto-Wait <span>&amp; Assertions</span></h1>
+        <p>This is Playwright's superpower. Understanding auto-wait is the difference between tests that work <em>sometimes</em> and tests that work <strong>always</strong>.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">5</div><div class="stat-l">Actionability Checks</div></div>
+          <div class="stat"><div class="stat-n">∞</div><div class="stat-l">Assertion Retries</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="aw-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>Auto-Wait &amp; Web-First Assertions</h2>
+        <p>Imagine ordering coffee: you don't grab the cup the millisecond you press "Order" — you wait until the barista hands you a full cup. Playwright does the same for clicks and fills: it waits until the element is <strong>actually ready</strong> before acting.</p>
+        <p><strong>Web-first assertions</strong> are the other half — instead of checking the cart total once and hoping the API finished, Playwright <strong>retries</strong> until the total appears or a timeout hits.</p>
+      </div>
+
+      <div class="sec" id="aw-race">
+        <div class="sec-label">⚠️ The Pain</div>
+        <h2>The Problem: Race Conditions</h2>
+        <p>E-commerce sites are asynchronous. When you click "Add to Cart":</p>
+        <ol>
+          <li>JavaScript sends an API request</li>
+          <li>Server processes the request</li>
+          <li>Response comes back</li>
+          <li>UI updates the cart count</li>
+        </ol>
+        <p>Your test runs much faster than this. Without proper waiting, you read the cart badge before the UI updates — like checking your mailbox before the postman arrives.</p>
+
+        <div class="card ph3-card">
+          <div class="card-head">
+            <div class="card-num">❌</div>
+            <div class="card-title">Dangerous: Race Condition</div>
+          </div>
+          <div class="card-body">
+            <pre><code>await page.click('.add-to-cart');
+const count = await page.textContent('.cart-count');
+expect(count).toBe('1');  // Might still be '0'!</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="aw-how">
+        <div class="sec-label">⚙️ How It Works</div>
+        <h2>How Auto-Wait Works</h2>
+        <p>When you call <code>await page.getByRole('button', { name: 'Add to Cart' }).click()</code>, Playwright doesn't click immediately. It polls until <strong>all actionability checks</strong> pass — like a bouncer checking ID, ticket, and dress code before letting you in.</p>
+        <ul>
+          <li><strong>Attached</strong> — element exists in the DOM</li>
+          <li><strong>Visible</strong> — not hidden, not zero-size</li>
+          <li><strong>Stable</strong> — not animating or moving</li>
+          <li><strong>Enabled</strong> — not disabled</li>
+          <li><strong>Receivable</strong> — nothing blocking clicks (overlays)</li>
+        </ul>
+        <p>Only after ALL checks pass does Playwright perform the action.</p>
+      </div>
+
+      <div class="sec" id="aw-actionability">
+        <div class="sec-label">📊 Comparison</div>
+        <h2>Actionability by Operation</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Action</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Checks Required</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>click()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Attached, Visible, Stable, Enabled, Receivable</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>fill()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Attached, Visible, Enabled, Editable</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>check()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Attached, Visible, Stable, Enabled</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>hover()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Attached, Visible, Stable</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>focus()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Attached</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>selectOption()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Attached, Visible, Enabled</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec" id="aw-ecommerce-actions">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>E-Commerce Auto-Wait Examples</h2>
+        <p>Each action below relies on auto-wait — no <code>sleep()</code> between steps.</p>
+
+        <div class="card ph1-card">
+          <div class="card-head">
+            <div class="card-num">1</div>
+            <div class="card-title">Add to Cart</div>
+          </div>
+          <div class="card-body">
+            <pre><code>test('add product to cart', async ({ page }) => {
+  await page.goto('/products/wireless-headphones');
+
+  // Waits: present, visible, stable, enabled, not blocked
+  await page.getByRole('button', { name: 'Add to Cart' }).click();
+});</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head">
+            <div class="card-num">2</div>
+            <div class="card-title">Checkout Form</div>
+          </div>
+          <div class="card-body">
+            <pre><code>test('checkout form', async ({ page }) => {
+  await page.goto('/checkout');
+
+  await page.getByLabel('Card Number').fill('4111111111111111');
+  await page.getByLabel('Expiration').fill('12/25');
+  await page.getByLabel('CVV').fill('123');
+
+  // Waits until "Pay Now" is enabled (e.g. after validation)
+  await page.getByRole('button', { name: 'Pay Now' }).click();
+});</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph4-card">
+          <div class="card-head">
+            <div class="card-num">3</div>
+            <div class="card-title">Shipping Dropdown</div>
+          </div>
+          <div class="card-body">
+            <pre><code>await page.getByRole('combobox', { name: 'Shipping Method' })
+  .selectOption('express');
+
+// Price may update async — use web-first assertion next
+await expect(page.getByTestId('shipping-cost')).toHaveText('$15.99');</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="aw-web-first">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Web-First Assertions</h2>
+        <p>A regular assertion is like glancing at the oven once — if the cake isn't done, you fail. A web-first assertion keeps checking until it's ready (or the timer rings).</p>
+
+        <div class="card ph3-card">
+          <div class="card-head">
+            <div class="card-num">❌</div>
+            <div class="card-title">Bad — checks once</div>
+          </div>
+          <div class="card-body">
+            <pre><code>expect(await page.textContent('.cart-total')).toBe('$129.99');</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph4-card">
+          <div class="card-head">
+            <div class="card-num">✅</div>
+            <div class="card-title">Good — auto-retries</div>
+          </div>
+          <div class="card-body">
+            <pre><code>await expect(page.locator('.cart-total')).toHaveText('$129.99');</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="aw-assertions-list">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Available Web-First Assertions</h2>
+        <pre><code>// Visibility
+await expect(locator).toBeVisible();
+await expect(locator).toBeHidden();
+
+// Text
+await expect(locator).toHaveText('Expected text');
+await expect(locator).toContainText('partial');
+await expect(locator).toHaveText(/regex pattern/);
+
+// Form state
+await expect(locator).toBeEnabled();
+await expect(locator).toBeDisabled();
+await expect(locator).toBeChecked();
+await expect(locator).toHaveValue('input value');
+
+// Element state
+await expect(locator).toBeAttached();
+await expect(locator).toHaveAttribute('href', '/cart');
+await expect(locator).toHaveClass(/active/);
+await expect(locator).toHaveCount(5);
+
+// Page-level
+await expect(page).toHaveTitle('Shopping Cart');
+await expect(page).toHaveURL(/\/checkout/);</code></pre>
+      </div>
+
+      <div class="sec" id="aw-ecommerce-assertions">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>E-Commerce Assertion Patterns</h2>
+        <p>A full purchase flow — every <code>expect</code> retries until the async UI catches up.</p>
+        <pre><code>test('complete purchase flow', async ({ page }) => {
+  await page.goto('/products');
+
+  await page.getByRole('button', { name: 'Add to Cart' }).first().click();
+  await expect(page.getByTestId('cart-count')).toHaveText('1');
+
+  await page.getByRole('link', { name: 'Cart' }).click();
+  await expect(page).toHaveURL(/\/cart/);
+  await expect(page.getByRole('heading', { name: 'Your Cart' })).toBeVisible();
+  await expect(page.getByTestId('cart-item')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Checkout' }).click();
+  await page.getByLabel('Email').fill('test@example.com');
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(page.getByText('Order Confirmed')).toBeVisible();
+});</code></pre>
+      </div>
+
+      <div class="sec" id="aw-soft">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Soft Assertions</h2>
+        <p><code>expect.soft()</code> is like a checklist inspector — note every problem on the product page, then report all failures at the end instead of stopping at the first missing image.</p>
+        <pre><code>test('product page has required elements', async ({ page }) => {
+  await page.goto('/products/laptop');
+
+  await expect.soft(page.getByRole('img', { name: /laptop/i })).toBeVisible();
+  await expect.soft(page.getByTestId('product-price')).toBeVisible();
+  await expect.soft(page.getByTestId('product-rating')).toBeVisible();
+  await expect.soft(page.getByRole('button', { name: 'Add to Cart' })).toBeEnabled();
+
+  // All failures reported at end of test
+});</code></pre>
+      </div>
+
+      <div class="sec" id="aw-timeouts">
+        <div class="sec-label">⏱️ Timeouts</div>
+        <h2>Custom Timeouts</h2>
+        <p>Sometimes checkout or payment needs extra patience — tune timeouts like adjusting an oven timer for a bigger cake.</p>
+        <pre><code>// Per-assertion (slow payment confirmation)
+await expect(page.getByText('Payment processed')).toBeVisible({
+  timeout: 30000,
+});
+
+// Per-action (slow image load)
+await page.getByRole('img', { name: 'Product' }).click({ timeout: 10000 });
+
+// Global config
+export default defineConfig({
+  use: { actionTimeout: 15000 },
+  expect: { timeout: 10000 },
+});</code></pre>
+      </div>
+
+      <div class="sec" id="aw-antipatterns">
+        <div class="sec-label">🚫 Anti-Patterns</div>
+        <h2>What NOT to Do</h2>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">1</div><div class="card-title">Manual Sleep</div></div>
+          <div class="card-body">
+            <pre><code>// BAD
+await page.click('.add-to-cart');
+await page.waitForTimeout(2000);
+expect(await page.textContent('.cart-count')).toBe('1');
+
+// GOOD
+await page.click('.add-to-cart');
+await expect(page.locator('.cart-count')).toHaveText('1');</code></pre>
+            <p>Fixed sleeps waste time when fast, fail when slow, and differ across CI vs laptop.</p>
+          </div>
+        </div>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">2</div><div class="card-title">Redundant waitForSelector</div></div>
+          <div class="card-body">
+            <pre><code>// UNNECESSARY
+await page.waitForSelector('.add-to-cart');
+await page.click('.add-to-cart');
+
+// CORRECT — auto-wait built in
+await page.click('.add-to-cart');</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">3</div><div class="card-title">Manual Polling Loop</div></div>
+          <div class="card-body">
+            <pre><code>// BAD — reinventing expect()
+let cartCount = '0';
+for (let i = 0; i &lt; 10; i++) {
+  cartCount = await page.textContent('.cart-count') ?? '0';
+  if (cartCount === '1') break;
+  await page.waitForTimeout(500);
+}
+
+// GOOD
+await expect(page.locator('.cart-count')).toHaveText('1');</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="aw-explicit">
+        <div class="sec-label">🔧 When Needed</div>
+        <h2>When You DO Need Explicit Waits</h2>
+        <p>Auto-wait handles elements — but sometimes you must wait for <strong>network, navigation, or load state</strong> before asserting.</p>
+        <pre><code>// Wait for API after "Load More"
+await page.getByRole('button', { name: 'Load More' }).click();
+await page.waitForResponse(r =>
+  r.url().includes('/api/products') && r.status() === 200
+);
+await expect(page.getByTestId('product-card')).toHaveCount(20);
+
+// Wait for navigation / URL
+await page.getByRole('button', { name: 'Submit Order' }).click();
+await page.waitForURL('**/order-confirmation');
+
+// Wait for SPA to settle
+await page.goto('/products');
+await page.waitForLoadState('networkidle');
+
+// Wait for spinner to leave
+await page.locator('.loading-spinner').waitFor({ state: 'hidden' });</code></pre>
+      </div>
+
+      <div class="sec" id="aw-realworld">
+        <div class="sec-label">🏪 Real-Life Example</div>
+        <h2>Real-World E-Commerce Patterns</h2>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">A</div><div class="card-title">Quantity → Subtotal</div></div>
+          <div class="card-body">
+            <pre><code>await page.getByRole('spinbutton', { name: 'Quantity' }).fill('3');
+await expect(page.getByTestId('item-subtotal')).toHaveText('$89.97');
+await expect(page.getByTestId('cart-total')).toHaveText('$89.97');</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">B</div><div class="card-title">Promo Code</div></div>
+          <div class="card-body">
+            <pre><code>await page.getByPlaceholder('Promo code').fill('SAVE20');
+await page.getByRole('button', { name: 'Apply' }).click();
+await expect(page.getByText('Discount applied')).toBeVisible();
+await expect(page.getByTestId('discount-amount')).toHaveText('-$25.99');</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">C</div><div class="card-title">Out of Stock</div></div>
+          <div class="card-body">
+            <pre><code>await expect(page.getByText('Out of Stock')).toBeVisible();
+await expect(page.getByRole('button', { name: 'Add to Cart' })).toBeDisabled();</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="aw-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Using Vitest/Jest <code>expect</code> on raw values:</strong> <code>expect(await el.textContent()).toBe('1')</code> — no retry.
+            <br>✅ <strong>Use Playwright <code>await expect(locator).toHaveText('1')</code></strong> — web-first retry.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Copying Selenium habits:</strong> <code>waitForSelector</code> before every click.
+            <br>✅ <strong>Trust auto-wait</strong> on actions; use explicit waits only for network/navigation.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Same timeout everywhere:</strong> 1s for payment confirmation that needs 30s.
+            <br>✅ <strong>Override per assertion</strong> for slow e-commerce operations.
+          </li>
+          <li>
+            ❌ <strong>Soft asserts for critical path:</strong> Using <code>expect.soft</code> on "Order Confirmed" hides checkout failures.
+            <br>✅ <strong>Reserve soft asserts</strong> for non-blocking UI audits (images, ratings).
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="aw-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong>Auto-wait is automatic</strong> — every action waits for actionability</li>
+          <li><strong>Web-first assertions retry</strong> — use <code>await expect(locator)</code>, not <code>expect(await value)</code></li>
+          <li><strong>Avoid manual waits</strong> — <code>waitForTimeout</code> is almost always wrong</li>
+          <li><strong>Timeouts are configurable</strong> — per-assertion, per-action, or global</li>
+          <li><strong>Explicit waits sparingly</strong> — network, navigation, load state</li>
+          <li><strong>E-commerce is async</strong> — cart, pricing, inventory all benefit</li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> Tests work reliably now — but duplicate code grows fast. Next we'll implement the <strong>Page Object Model</strong> for maintainable suites.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="aw-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Situation</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Do this</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Click / fill / check</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Just act — auto-wait handles readiness</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Assert text / visibility</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>await expect(locator).toHaveText(...)</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Cart count after API</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Web-first <code>toHaveText</code> / <code>toHaveCount</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Slow payment</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>toBeVisible({ timeout: 30000 })</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">After API call</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>waitForResponse()</code> then assert</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Never use</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>waitForTimeout</code>, manual poll loops</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Audit many UI bits</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>expect.soft(...)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

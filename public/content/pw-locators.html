@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Locator Strategies — Playwright Learning Path</title>
+  <meta name="description" content="Playwright locator hierarchy — getByRole, getByText, getByTestId, chaining, e-commerce patterns, and debugging brittle selectors." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">Locator Strategies</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-locators">
+      <div class="nav-logo"><div class="v">Locators</div><h2>Strategies</h2></div>
+      <div class="nav-group">Basics</div>
+      <a href="#loc-intro">Locator Strategies</a>
+      <a href="#loc-hierarchy">The Locator Hierarchy</a>
+      <div class="nav-group">Semantic Locators</div>
+      <a href="#loc-role">getByRole()</a>
+      <a href="#loc-name-matching">Name Matching</a>
+      <a href="#loc-text">getByText()</a>
+      <a href="#loc-label">getByLabel()</a>
+      <a href="#loc-placeholder">getByPlaceholder()</a>
+      <a href="#loc-testid">getByTestId()</a>
+      <div class="nav-group">Advanced</div>
+      <a href="#loc-css">CSS Selectors</a>
+      <a href="#loc-chaining">Chaining &amp; Filtering</a>
+      <a href="#loc-lists">Working with Lists</a>
+      <div class="nav-group">E-Commerce</div>
+      <a href="#loc-patterns">E-Commerce Patterns</a>
+      <a href="#loc-refactoring">Survives Refactoring</a>
+      <div class="nav-group">Tools</div>
+      <a href="#loc-debug">Debugging Locators</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#loc-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#loc-takeaways">Key Takeaways</a>
+      <a href="#loc-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="loc-top">
+        <div class="hero-tags">
+          <span class="hero-tag">getByRole</span>
+          <span class="hero-tag">Locators</span>
+          <span class="hero-tag">E-Commerce</span>
+        </div>
+        <h1>Locator <span>Strategies</span></h1>
+        <p>The #1 reason tests break after deployments? <strong>Brittle locators.</strong> A developer changes a CSS class, and suddenly 50 tests fail. Let's fix that.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">6</div><div class="stat-l">Locator Types</div></div>
+          <div class="stat"><div class="stat-n">1</div><div class="stat-l">Golden Rule</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="loc-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>Locator Strategies</h2>
+        <p>A <strong>locator</strong> is how your test finds an element on the page — like giving directions to a friend. "The red house on Oak Street" breaks when they repaint it. "The house with the mailbox that says Smith" survives a new paint job.</p>
+        <p>Playwright locators should match <strong>how users see the page</strong> (buttons, labels, headings) — not how developers styled it yesterday (CSS class names).</p>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p>In Topic 2 we used <code>.shopping_cart_badge</code> — that was intentional. This lesson shows you the <strong>resilient</strong> replacements.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="loc-hierarchy">
+        <div class="sec-label">📊 Comparison</div>
+        <h2>The Locator Hierarchy</h2>
+        <p>Playwright recommends locators in this priority order — top = most stable, bottom = last resort:</p>
+        <pre><code>1. getByRole()     → Best: matches how users see the page
+2. getByText()     → Good: visible text content
+3. getByLabel()    → Good: form accessibility
+4. getByTestId()   → Good: explicit test contracts
+5. CSS selectors   → Okay: when nothing else works
+6. XPath           → Last resort: complex DOM traversal</code></pre>
+        <p>Why this order? If your "Add to Cart" button changes from <code>class="btn-primary"</code> to <code>class="ProductCard__button"</code>, a CSS selector breaks. But <code>getByRole('button', { name: 'Add to Cart' })</code> keeps working — users still see a button with that label.</p>
+      </div>
+
+      <div class="sec" id="loc-role">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Role-Based Locators (Best Practice)</h2>
+        <p><code>getByRole()</code> is like asking a screen reader what’s on the page — it finds elements by their <strong>ARIA role</strong> and accessible name.</p>
+
+        <div class="card ph1-card">
+          <div class="card-head">
+            <div class="card-num">1</div>
+            <div class="card-title">Common E-Commerce Roles</div>
+          </div>
+          <div class="card-body">
+            <pre><code>// Buttons
+await page.getByRole('button', { name: 'Add to Cart' }).click();
+await page.getByRole('button', { name: 'Proceed to Checkout' }).click();
+
+// Links
+await page.getByRole('link', { name: 'View Details' }).click();
+
+// Headings
+await expect(page.getByRole('heading', { name: 'Shopping Cart' })).toBeVisible();
+
+// Navigation
+await page.getByRole('navigation').getByRole('link', { name: 'Products' }).click();
+
+// Form elements
+await page.getByRole('textbox', { name: 'Email' }).fill('john@example.com');
+await page.getByRole('spinbutton', { name: 'Quantity' }).fill('3');
+await page.getByRole('checkbox', { name: 'Subscribe to newsletter' }).check();
+await page.getByRole('combobox', { name: 'Country' }).selectOption('United States');</code></pre>
+          </div>
+        </div>
+
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Element</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Role</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">CTA buttons</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>button</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Add to Cart, Buy Now</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Product links</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>link</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">View product, My Account</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Search, forms</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>textbox</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Email, search field</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Quantity</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>spinbutton</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Qty selector</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Dropdowns</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>combobox</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Size, country, sort</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Page titles</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>heading</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Checkout, Products</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Modals</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>dialog</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Cart popup, confirm</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec" id="loc-name-matching">
+        <div class="sec-label">🔤 Matching</div>
+        <h2>Name Matching Options</h2>
+        <p>Names are like calling someone by nickname vs full name — Playwright lets you be exact or flexible:</p>
+        <pre><code>// Exact match (default)
+page.getByRole('button', { name: 'Add to Cart' });
+
+// Case-insensitive
+page.getByRole('button', { name: 'add to cart', exact: false });
+
+// Regex pattern
+page.getByRole('button', { name: /add to cart/i });
+
+// Partial heading match
+page.getByRole('heading', { name: /checkout/i });</code></pre>
+      </div>
+
+      <div class="sec" id="loc-text">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Text-Based Locators — getByText()</h2>
+        <p><code>getByText()</code> finds what the shopper actually reads on screen — product names, prices, success messages.</p>
+        <pre><code>await page.getByText('Wireless Bluetooth Headphones').click();
+await expect(page.getByText('$129.99')).toBeVisible();
+await expect(page.getByText('Item added to cart')).toBeVisible();
+await expect(page.getByText('Order confirmed')).toBeVisible();
+
+// Partial match
+await page.getByText('Free shipping', { exact: false }).click();</code></pre>
+      </div>
+
+      <div class="sec" id="loc-label">
+        <div class="sec-label">🏪 Real-Life Example</div>
+        <h2>getByLabel() — Forms &amp; Checkout</h2>
+        <p>Checkout forms are like filling out a paper form — each field has a <strong>printed label</strong>. <code>getByLabel()</code> targets that label, which is how assistive tech finds fields too.</p>
+        <pre><code>await page.getByLabel('First Name').fill('John');
+await page.getByLabel('Last Name').fill('Doe');
+await page.getByLabel('Email Address').fill('john@example.com');
+await page.getByLabel('Credit Card Number').fill('4111111111111111');
+
+await page.getByLabel('Standard Shipping ($5.99)').check();
+await page.getByLabel('Express Shipping ($15.99)').check();</code></pre>
+      </div>
+
+      <div class="sec" id="loc-placeholder">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>getByPlaceholder()</h2>
+        <p>When labels are missing (common on older sites), the placeholder hint inside the box is your fallback — like the faint "Search..." ghost text.</p>
+        <pre><code>await page.getByPlaceholder('Search products...').fill('laptop');
+await page.getByPlaceholder('Enter promo code').fill('SAVE20');</code></pre>
+        <div class="note note-warn">
+          <span class="note-i">⚠</span>
+          <p>Prefer <code>getByLabel()</code> when labels exist — placeholders disappear once you type.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="loc-testid">
+        <div class="sec-label">🏷️ Test Contracts</div>
+        <h2>Test ID Locators — getByTestId()</h2>
+        <p>When you control the app, <code>data-testid</code> is a <strong>handshake between dev and QA</strong> — "this attribute is for tests only; don't remove it without telling us."</p>
+        <pre><code>&lt;!-- In your app --&gt;
+&lt;button data-testid="add-to-cart-btn"&gt;Add to Cart&lt;/button&gt;
+&lt;span data-testid="cart-count"&gt;3&lt;/span&gt;
+
+// In tests
+await page.getByTestId('add-to-cart-btn').click();
+await expect(page.getByTestId('cart-count')).toHaveText('3');</code></pre>
+        <p>Custom attribute in config:</p>
+        <pre><code>// playwright.config.ts
+use: { testIdAttribute: 'data-test' }  // or 'data-cy', 'data-qa'</code></pre>
+        <p><strong>When to use test IDs:</strong> no accessible role/text, many similar elements, or dynamic SKU grids:</p>
+        <pre><code>await page.getByTestId('product-card-SKU123').click();
+await expect(page.getByTestId('inventory-count')).toContainText('left');</code></pre>
+      </div>
+
+      <div class="sec" id="loc-css">
+        <div class="sec-label">⚠️ Fallback</div>
+        <h2>CSS Selectors (When Necessary)</h2>
+        <p>CSS is like memorizing the paint color of a door — works until someone repaints. Use only when semantic locators fail.</p>
+        <pre><code>await page.locator('.product-card').first().click();
+await page.locator('[data-product-id="12345"]').click();
+await page.locator('button[type="submit"]').click();
+await page.locator('.product-grid > div:first-child').click();
+await page.locator('input:enabled').fill('test');</code></pre>
+      </div>
+
+      <div class="sec" id="loc-chaining">
+        <div class="sec-label">🔗 Precision</div>
+        <h2>Chaining and Filtering</h2>
+        <p>On a crowded shelf of products, you don't grab the first box — you find the one labeled "Laptop", then press its Add to Cart button.</p>
+        <pre><code>const productCard = page.locator('.product-card').filter({ hasText: 'Laptop' });
+await productCard.getByRole('button', { name: 'Add to Cart' }).click();
+
+const expensiveProducts = page.locator('.product-card').filter({
+  has: page.getByText('$500', { exact: false }),
+});
+
+await page.getByRole('navigation').getByRole('link', { name: 'Electronics' }).click();</code></pre>
+      </div>
+
+      <div class="sec" id="loc-lists">
+        <div class="sec-label">📋 Lists</div>
+        <h2>Working with Lists</h2>
+        <p>Product grids are like a row of identical cereal boxes — you need <code>first()</code>, <code>nth()</code>, or a loop to pick the right one.</p>
+        <pre><code>const products = page.getByTestId('product-card');
+const count = await products.count();
+
+await products.first().click();
+await products.last().click();
+await products.nth(2).click();  // Third item (0-indexed)
+
+for (const product of await products.all()) {
+  const name = await product.getByRole('heading').textContent();
+  console.log(name);
+}</code></pre>
+      </div>
+
+      <div class="sec" id="loc-patterns">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>E-Commerce Locator Patterns</h2>
+        <p>Reusable patterns are like a shopping checklist template — write once, reuse on every product.</p>
+
+        <div class="card ph2-card">
+          <div class="card-head">
+            <div class="card-num">2</div>
+            <div class="card-title">Product Card Helper</div>
+          </div>
+          <div class="card-body">
+            <pre><code>async function getProduct(page, productName: string) {
+  const card = page.locator('[data-testid="product-card"]').filter({
+    hasText: productName,
+  });
+  return {
+    card,
+    name: card.getByRole('heading'),
+    price: card.getByTestId('product-price'),
+    addToCart: card.getByRole('button', { name: 'Add to Cart' }),
+    image: card.getByRole('img'),
+  };
+}
+
+const laptop = await getProduct(page, 'MacBook Pro');
+await expect(laptop.price).toHaveText('$1,299.00');
+await laptop.addToCart.click();</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph3-card">
+          <div class="card-head">
+            <div class="card-num">3</div>
+            <div class="card-title">Cart Row &amp; Checkout Section</div>
+          </div>
+          <div class="card-body">
+            <pre><code>function getCartItem(page, productName: string) {
+  const row = page.getByRole('row').filter({ hasText: productName });
+  return {
+    row,
+    quantity: row.getByRole('spinbutton'),
+    remove: row.getByRole('button', { name: 'Remove' }),
+    subtotal: row.getByTestId('item-subtotal'),
+  };
+}
+
+const shippingSection = page.getByRole('group', { name: 'Shipping Address' });
+await shippingSection.getByLabel('Street Address').fill('123 Main St');
+await shippingSection.getByLabel('City').fill('San Francisco');
+
+await page.getByRole('checkbox', { name: 'Electronics' }).check();
+await page.getByRole('combobox', { name: 'Sort by' }).selectOption('price-low-high');</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="loc-refactoring">
+        <div class="sec-label">📊 Side by Side</div>
+        <h2>Why Locators Survive Refactoring</h2>
+        <p>A designer redesigns the product card — new CSS classes, <code>h3</code> becomes <code>h2</code>, BEM naming everywhere. CSS-based tests snap; user-facing locators survive.</p>
+
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Locator</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Before redesign</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">After redesign</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Broken?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>.product-card</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Works</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Fails</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Yes</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>.btn-primary</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Works</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Fails</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Yes</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>getByRole('heading', { name: 'Laptop' })</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Works</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Works</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">No</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>getByRole('button', { name: 'Add to Cart' })</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Works</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Works</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">No</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>getByText('$999')</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Works</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Works</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">No</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec" id="loc-debug">
+        <div class="sec-label">🔧 Tools</div>
+        <h2>Debugging Locators</h2>
+        <p>When lost in a store, you ask for help. Playwright gives you three helpers:</p>
+        <ul>
+          <li><strong>Inspector</strong> — <code>npx playwright test --debug</code> — hover elements, try locators, step through tests</li>
+          <li><strong>Codegen</strong> — <code>npx playwright codegen https://www.saucedemo.com</code> — click elements, get recommended locators copied</li>
+          <li><strong>Console in UI/debug mode</strong> — count matches, list button text, inspect nodes</li>
+        </ul>
+        <pre><code>await page.locator('.product-card').count();
+await page.getByRole('button').allTextContents();
+await page.locator('.cart-item').evaluateAll(els => els.map(e => e.textContent));</code></pre>
+
+        <div class="note note-tip">
+          <span class="note-i">✓</span>
+          <p><strong>Quick tip:</strong> Run <code>codegen</code> on Sauce Demo and compare suggested locators to the brittle <code>.shopping_cart_badge</code> from Topic 2.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="loc-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>CSS class locators everywhere:</strong> <code>.btn-primary.add-cart</code> breaks on every redesign.
+            <br>✅ <strong>Start with <code>getByRole</code></strong> — classes are a last resort.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>XPath for simple buttons:</strong> Long paths like <code>//div[3]/span/button</code> are fragile and unreadable.
+            <br>✅ <strong>Use roles or test IDs</strong> — XPath only for truly complex DOM cases.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Overly broad text:</strong> <code>getByText('$')</code> matches every price on the page.
+            <br>✅ <strong>Be specific</strong> — <code>getByText('$129.99')</code> or filter within a product card.
+          </li>
+          <li>
+            ❌ <strong>Skipping codegen:</strong> Guessing locators wastes hours.
+            <br>✅ <strong>Let Playwright suggest</strong> — then pick the highest item in the hierarchy.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="loc-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong>Prefer role-based locators</strong> — <code>getByRole()</code> matches user perception and survives refactoring</li>
+          <li><strong>Text locators are stable</strong> — users see text; so should your tests</li>
+          <li><strong>Test IDs create contracts</strong> — explicit agreement between devs and QA</li>
+          <li><strong>CSS/XPath are fallbacks</strong> — use only when semantic locators fail</li>
+          <li><strong>Chain for precision</strong> — <code>.filter()</code> and nested locators narrow crowded pages</li>
+          <li><strong>Use codegen</strong> — let Playwright suggest the best locator, then upgrade to roles if needed</li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> You've learned to find elements reliably. Next we'll explore auto-wait and web-first assertions — how Playwright ensures actions succeed without manual waits.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="loc-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Priority</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">API</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Use when</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">1</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>getByRole()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Buttons, links, headings, forms</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">2</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>getByText()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Visible copy users read</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">3</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>getByLabel()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Labeled form fields</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">4</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>getByTestId()</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Stable dev/QA contract</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">5</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>locator('css')</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">No semantic option</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">6</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">XPath</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Last resort only</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Debug</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>--debug</code> / <code>codegen</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Find &amp; verify locators</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

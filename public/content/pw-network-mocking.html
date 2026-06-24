@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Network Interception &amp; Mocking — Playwright Learning Path</title>
+  <meta name="description" content="page.route, fulfill/continue/abort, payment and inventory mocks, HAR playback, offline mode, and e-commerce edge cases." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">Network Mocking</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-mock">
+      <div class="nav-logo"><div class="v">Control</div><h2>Mocking</h2></div>
+      <div class="nav-group">Why Mock</div>
+      <a href="#mock-intro">Network Mocking</a>
+      <a href="#mock-why">Why Mock?</a>
+      <div class="nav-group">Basics</div>
+      <a href="#mock-route">page.route()</a>
+      <a href="#mock-matching">Route Matching</a>
+      <a href="#mock-patterns">Three Patterns</a>
+      <div class="nav-group">E-Commerce</div>
+      <a href="#mock-payment">Payment Gateway</a>
+      <a href="#mock-inventory">Inventory</a>
+      <a href="#mock-shipping">Shipping</a>
+      <div class="nav-group">Conditions</div>
+      <a href="#mock-network">Network Conditions</a>
+      <a href="#mock-har">HAR Files</a>
+      <a href="#mock-fixtures">Mock Fixtures</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#mock-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#mock-takeaways">Key Takeaways</a>
+      <a href="#mock-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="mock-top">
+        <div class="hero-tags">
+          <span class="hero-tag">page.route</span>
+          <span class="hero-tag">HAR</span>
+          <span class="hero-tag">Edge Cases</span>
+        </div>
+        <h1>Network <span>Mocking</span></h1>
+        <p>How do you test payment failures, empty inventory, or slow APIs? You can't wait for chaos — you <strong>stage it</strong> with network interception.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">3</div><div class="stat-l">Response Patterns</div></div>
+          <div class="stat"><div class="stat-n">∞</div><div class="stat-l">Scenarios</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="mock-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>Network Interception &amp; Mocking</h2>
+        <p>Think of a flight simulator: pilots practice engine failure without crashing a real plane. <code>page.route()</code> lets your tests practice <strong>declined cards</strong>, <strong>500 errors</strong>, and <strong>timeouts</strong> without waiting for production to break.</p>
+        <p>Playwright sits between your app and the network — you decide whether each request gets real data, fake data, or no response at all.</p>
+      </div>
+
+      <div class="sec" id="mock-why">
+        <div class="sec-label">📊 Comparison</div>
+        <h2>Why Mock Network Requests?</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Scenario</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Real Network</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Mocked</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Payment failure</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Special test card</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Mock decline JSON</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Out of stock</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Deplete inventory</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Mock stock: 0</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Slow network</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Throttle connection</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Artificial delay</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">API 500</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Wait for outage</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Mock error response</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Third-party down</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Wait for outage</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>route.abort()</code></td></tr>
+          </tbody>
+        </table>
+        <p>Mocking makes the <strong>untestable testable</strong>.</p>
+      </div>
+
+      <div class="sec" id="mock-route">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>page.route() Fundamentals</h2>
+        <p>Register a handler <strong>before</strong> navigation — like putting a filter on the water pipe before opening the tap.</p>
+        <pre><code>test('intercept products API', async ({ page }) => {
+  await page.route('**/api/products', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { id: '1', name: 'Mocked Product', price: 99.99 },
+        { id: '2', name: 'Another Mock', price: 49.99 },
+      ]),
+    });
+  });
+
+  await page.goto('/products');
+
+  await expect(page.getByText('Mocked Product')).toBeVisible();
+  await expect(page.getByText('$99.99')).toBeVisible();
+});</code></pre>
+        <p>Each handler can <strong>fulfill</strong> (mock), <strong>continue</strong> (forward), or <strong>abort</strong> (fail).</p>
+      </div>
+
+      <div class="sec" id="mock-matching">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Route Matching Patterns</h2>
+        <pre><code>// Exact URL
+await page.route('https://api.shop.com/products', handler);
+
+// Glob — any domain
+await page.route('**/api/products', handler);
+await page.route('**/api/products/*', handler);
+
+// Regex — product by ID
+await page.route(/\/api\/products\/\d+/, handler);
+
+// Function predicate
+await page.route(
+  (url) => url.pathname.startsWith('/api/') && url.searchParams.has('mock'),
+  handler
+);</code></pre>
+      </div>
+
+      <div class="sec" id="mock-patterns">
+        <div class="sec-label">⚙️ How It Works</div>
+        <h2>Three Response Patterns</h2>
+
+        <div class="card ph1-card">
+          <div class="card-head"><div class="card-num">1</div><div class="card-title">Fulfill — return mock data</div></div>
+          <div class="card-body">
+            <pre><code>await page.route('**/api/cart', async (route) => {
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ items: [...], total: 65.38 }),
+  });
+});</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">2</div><div class="card-title">Continue — modify real response</div></div>
+          <div class="card-body">
+            <pre><code>await page.route('**/api/products/*', async (route) => {
+  const response = await route.fetch();
+  const json = await response.json();
+  json.price = json.price * 0.9;  // 10% sale
+  await route.fulfill({ response, body: JSON.stringify(json) });
+});</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">3</div><div class="card-title">Abort — simulate failure</div></div>
+          <div class="card-body">
+            <pre><code>await page.route('**/api/recommendations', async (route) => {
+  await route.abort('failed');
+});
+// Also: 'timedout', 'connectionrefused', 'internetdisconnected', ...</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="mock-payment">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>Mocking Payment Gateway</h2>
+        <pre><code>// Success
+await page.route('**/api/payments/process', async (route) => {
+  await route.fulfill({
+    status: 200,
+    body: JSON.stringify({ success: true, transactionId: 'TXN-12345' }),
+  });
+});
+
+// Declined card
+await page.route('**/api/payments/process', async (route) => {
+  await route.fulfill({
+    status: 400,
+    body: JSON.stringify({
+      success: false,
+      error: 'card_declined',
+      message: 'Your card was declined.',
+    }),
+  });
+});
+await page.getByRole('button', { name: 'Pay Now' }).click();
+await expect(page.getByRole('alert')).toContainText('card was declined');
+
+// 3DS redirect
+body: JSON.stringify({
+  requiresAction: true,
+  actionType: '3ds_redirect',
+  redirectUrl: 'https://bank.example/3ds-verify',
+})</code></pre>
+      </div>
+
+      <div class="sec" id="mock-inventory">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>Mocking Inventory Status</h2>
+        <pre><code>// Out of stock
+await page.route('**/api/products/SKU-001', async (route) => {
+  await route.fulfill({
+    body: JSON.stringify({ id: 'SKU-001', stock: 0, inStock: false }),
+  });
+});
+await expect(page.getByText('Out of Stock')).toBeVisible();
+await expect(page.getByRole('button', { name: 'Add to Cart' })).toBeDisabled();
+
+// Low stock warning
+body: JSON.stringify({ stock: 3, inStock: true, lowStock: true })
+await expect(page.getByText('Only 3 left!')).toBeVisible();</code></pre>
+      </div>
+
+      <div class="sec" id="mock-shipping">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>Mocking Shipping Calculations</h2>
+        <p>Read the request body and return different options — like a dispatcher who changes routes based on ZIP code.</p>
+        <pre><code>await page.route('**/api/shipping/calculate', async (route) => {
+  const postData = JSON.parse(route.request().postData() || '{}');
+  const options = postData.zipCode?.startsWith('96')
+    ? [{ id: 'express', name: 'Express (5-7 days)', price: 45.99 }]
+    : [
+        { id: 'standard', name: 'Standard (5-7 days)', price: 5.99 },
+        { id: 'express', name: 'Express (2-3 days)', price: 15.99 },
+      ];
+  await route.fulfill({ status: 200, body: JSON.stringify({ options }) });
+});</code></pre>
+      </div>
+
+      <div class="sec" id="mock-network">
+        <div class="sec-label">🌐 Real-Life Example</div>
+        <h2>Simulating Network Conditions</h2>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">A</div><div class="card-title">Slow network</div></div>
+          <div class="card-body">
+            <pre><code>await page.route('**/api/**', async (route) => {
+  await new Promise(r => setTimeout(r, 3000));
+  await route.continue();
+});
+await expect(page.getByTestId('loading-spinner')).toBeVisible();</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">B</div><div class="card-title">Offline mode</div></div>
+          <div class="card-body">
+            <pre><code>await context.setOffline(true);
+await page.getByRole('button', { name: 'Add to Cart' }).click();
+await expect(page.getByText(/offline|no connection/i)).toBeVisible();
+await context.setOffline(false);</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">C</div><div class="card-title">Intermittent failures (retry)</div></div>
+          <div class="card-body">
+            <pre><code>let requestCount = 0;
+await page.route('**/api/cart/add', async (route) => {
+  requestCount++;
+  if (requestCount &lt; 3) {
+    await route.fulfill({ status: 500, body: 'Internal Server Error' });
+  } else {
+    await route.fulfill({ status: 200, body: JSON.stringify({ cartCount: 1 }) });
+  }
+});
+await expect(page.getByTestId('cart-count')).toHaveText('1');
+expect(requestCount).toBe(3);</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="mock-har">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>HAR Recording &amp; Playback</h2>
+        <p>HAR files are like DVR recordings of network traffic — capture once during development, replay forever in CI without hitting real APIs.</p>
+        <pre><code>// Record mode
+await page.routeFromHAR('./hars/checkout.har', {
+  update: true,
+  updateContent: 'embed',
+});
+
+// Playback mode — no real network
+await page.routeFromHAR('./hars/checkout.har', {
+  update: false,
+  notFound: 'abort',
+});
+
+// Config: record minimal HAR in CI for debugging
+har: process.env.CI ? { path: './test-results/network.har', mode: 'minimal' } : undefined</code></pre>
+      </div>
+
+      <div class="sec" id="mock-fixtures">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Mock Fixtures</h2>
+        <p>Reusable fixtures wrap common mocks — one line to simulate declined payment across many tests.</p>
+        <pre><code>export const test = base.extend&lt;MockFixtures&gt;({
+  mockPayment: async ({ page }, use) => {
+    const mock = async (result: 'success' | 'declined' | 'error') => {
+      await page.route('**/api/payments/process', async (route) => {
+        const responses = {
+          success: { status: 200, body: { success: true, transactionId: 'TXN-123' } },
+          declined: { status: 400, body: { success: false, error: 'card_declined' } },
+          error: { status: 500, body: { error: 'Internal error' } },
+        };
+        await route.fulfill({
+          status: responses[result].status,
+          contentType: 'application/json',
+          body: JSON.stringify(responses[result].body),
+        });
+      });
+    };
+    await use(mock);
+  },
+});
+
+test('handles declined payment', async ({ page, mockPayment }) => {
+  await mockPayment('declined');
+  await page.goto('/checkout');
+  await expect(page.getByRole('alert')).toBeVisible();
+});</code></pre>
+      </div>
+
+      <div class="sec" id="mock-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Registering route after goto:</strong> Page already fetched — mock never runs.
+            <br>✅ <strong>Always <code>page.route()</code> before navigation</strong> or the triggering action.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Mocking everything in every test:</strong> You never hit real integration paths.
+            <br>✅ <strong>Mock edge cases</strong>; use real API or HAR for happy-path smoke tests.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Stale HAR files:</strong> API changed but playback still serves old JSON.
+            <br>✅ <strong>Re-record periodically</strong> or use <code>notFound: 'fallback'</code> when appropriate.
+          </li>
+          <li>
+            ❌ <strong>Forgetting to unroute:</strong> Mock leaks into the next test in the same page.
+            <br>✅ <strong><code>page.unroute()</code></strong> or isolate with fresh context per test.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="mock-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong><code>page.route()</code></strong> intercepts any network request</li>
+          <li><strong>Three patterns</strong> — Fulfill (mock), Continue (modify), Abort (fail)</li>
+          <li><strong>Edge cases</strong> — payment declines, inventory, shipping, retries</li>
+          <li><strong>HAR</strong> — record and replay real traffic</li>
+          <li><strong>Mock fixtures</strong> — reusable declined/success/error helpers</li>
+          <li><strong>Conditions</strong> — slow API, offline, intermittent 500s</li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> You can mock any network scenario — but what about visual bugs? Next we'll learn <strong>visual testing and mobile emulation</strong> for UI regressions and responsive designs.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="mock-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Goal</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Pattern</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Fake API JSON</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>route.fulfill({ status, body })</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Tweak real response</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>route.fetch()</code> → modify → <code>fulfill</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Network failure</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>route.abort('failed')</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Declined payment</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Mock <code>**/api/payments/process</code> → 400 + error</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Out of stock</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Mock product API with <code>stock: 0</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Offline UI</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>context.setOffline(true)</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Stable replay</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>routeFromHAR</code> with <code>update: false</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

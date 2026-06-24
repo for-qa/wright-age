@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Why Playwright in 2026 — Playwright Learning Path</title>
+  <meta name="description" content="Why Playwright beats Selenium for modern E2E testing — flaky tests, architecture, auto-wait, and career context." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">Why Playwright in 2026</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-why-playwright">
+      <div class="nav-logo"><div class="v">Foundation</div><h2>Why Playwright</h2></div>
+      <div class="nav-group">The Problem</div>
+      <a href="#wp-intro">Why Playwright in 2026</a>
+      <a href="#wp-flaky">The Flaky Test Problem</a>
+      <div class="nav-group">Architecture</div>
+      <a href="#wp-architecture">Root Difference</a>
+      <a href="#wp-ecommerce">E-Commerce Impact</a>
+      <div class="nav-group">Auto-Wait</div>
+      <a href="#wp-autowait">The Killer Feature</a>
+      <a href="#wp-autowait-code">Selenium vs Playwright</a>
+      <div class="nav-group">Comparison</div>
+      <a href="#wp-comparison">Feature Table</a>
+      <a href="#wp-when-selenium">When to Choose Selenium</a>
+      <a href="#wp-when-playwright">When to Choose Playwright</a>
+      <div class="nav-group">Real World</div>
+      <a href="#wp-migration">E-Commerce Migration</a>
+      <a href="#wp-career">Career Context</a>
+      <a href="#wp-code-preview">Code Preview</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#wp-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#wp-takeaways">Key Takeaways</a>
+      <a href="#wp-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="wp-top">
+        <div class="hero-tags">
+          <span class="hero-tag">Playwright</span>
+          <span class="hero-tag">Selenium</span>
+          <span class="hero-tag">Framework Choice</span>
+        </div>
+        <h1>Why Playwright <span>in 2026</span></h1>
+        <p>Selenium dominated web testing for 15+ years. Then Playwright arrived and changed everything. Understanding <em>why</em> helps you make better testing decisions.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">3.6×</div><div class="stat-l">Fewer Flaky Tests</div></div>
+          <div class="stat"><div class="stat-n">10</div><div class="stat-l">Features Compared</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="wp-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>Why Playwright in 2026</h2>
+        <p>Picking a test framework is like picking a car for a long road trip. Selenium got millions of teams where they needed to go. Playwright is the newer model built for today's highways — faster starts, fewer breakdowns, and better navigation.</p>
+        <p>This lesson answers one question: <strong>why should you care about Playwright in 2026?</strong> Especially when your team is tired of tests that pass on your laptop but fail in CI.</p>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p>This lesson is about <strong>framework choice</strong>, not syntax. You'll install Playwright and write your first test in the next lesson.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="wp-flaky">
+        <div class="sec-label">⚠️ The Pain</div>
+        <h2>The Flaky Test Problem</h2>
+        <p>Every QA engineer knows the pain: tests that pass locally but fail in CI. Tests that fail Monday morning but pass after a retry. This is the <strong>flaky test epidemic</strong> — like a weather forecast that's right half the time. You stop trusting it.</p>
+        <p>A 2023 Google study found that <strong>16% of tests</strong> in large codebases are flaky. For e-commerce sites with complex async behavior — loading products, updating carts, processing payments — that number climbs higher.</p>
+
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Framework</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Flaky Test Rate</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Selenium WebDriver</td>
+              <td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>23%</strong> of CI failures</td>
+              <td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Microsoft Research 2023</td>
+            </tr>
+            <tr>
+              <td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Playwright</td>
+              <td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>6.4%</strong> of CI failures</td>
+              <td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Same study</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top: 1rem;">That's <strong>3.6× fewer flaky tests</strong> with Playwright. But why?</p>
+      </div>
+
+      <div class="sec" id="wp-architecture">
+        <div class="sec-label">🏗️ Under the Hood</div>
+        <h2>Architecture: The Root Difference</h2>
+        <p><strong>Selenium</strong> sends commands via HTTP to a WebDriver server, which then talks to the browser. Every command is a separate back-and-forth message — like mailing a letter and waiting for a reply each time.</p>
+        <p><strong>Playwright</strong> connects directly to the browser over a live WebSocket line (using the browser's built-in DevTools protocol). Think of it as a phone call that stays open — you talk, the browser responds instantly, no post office in between.</p>
+
+        <div class="note note-tip">
+          <span class="note-i">✓</span>
+          <p>Think of Selenium as sending a letter for every action. Playwright keeps an open phone line — faster, more reliable, and always in sync.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="wp-ecommerce">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>Why This Matters for E-Commerce Testing</h2>
+        <p>Imagine a customer checking out at an online store — add to cart, update quantity, apply a coupon, pay. Each step waits on the page to react. With Selenium, every step is a separate round trip, like sending a runner to the warehouse aisle and waiting for them to come back before asking for the next item. With Playwright, it's one continuous conversation.</p>
+
+        <div class="card ph1-card">
+          <div class="card-head">
+            <div class="card-num">1</div>
+            <div class="card-title">Selenium Approach</div>
+            <span class="card-badge">HTTP round trips</span>
+          </div>
+          <div class="card-body">
+            <pre><code>1. Send "click Add to Cart" via HTTP → Wait for response
+2. Send "wait for cart update" via HTTP → Wait for response
+3. Send "check cart count" via HTTP → Wait for response
+4. Send "click checkout" via HTTP → Wait for response
+...20+ more round trips</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head">
+            <div class="card-num">2</div>
+            <div class="card-title">Playwright Approach</div>
+            <span class="card-badge">Persistent connection</span>
+          </div>
+          <div class="card-body">
+            <pre><code>1. Click "Add to Cart" (Playwright auto-waits for actionability)
+2. Assert cart updated (web-first assertion, auto-retries)
+3. Click checkout
+...Commands flow over persistent connection</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="wp-autowait">
+        <div class="sec-label">⭐ Killer Feature</div>
+        <h2>Auto-Wait: The Killer Feature</h2>
+        <p>This is the single biggest reason Playwright tests are more stable. <strong>Auto-wait</strong> is like a smart elevator — it won't close the doors until everyone is actually inside and ready. Selenium often uses a timer: "wait 5 seconds, then try anyway."</p>
+
+        <p>Playwright automatically waits for:</p>
+        <ul>
+          <li>Element to be <strong>attached</strong> to DOM</li>
+          <li>Element to be <strong>visible</strong> (not hidden, not zero-size)</li>
+          <li>Element to be <strong>stable</strong> (not animating)</li>
+          <li>Element to be <strong>enabled</strong> (not disabled)</li>
+          <li>Element to <strong>receive events</strong> (not blocked by another element)</li>
+        </ul>
+
+        <div class="note note-tip">
+          <span class="note-i">✓</span>
+          <p>No manual waits. No arbitrary timeouts. Dramatically fewer flaky tests.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="wp-autowait-code">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Selenium vs Playwright</h2>
+        <p>Adding a product to your cart is a perfect example. With Selenium you manually guess how long the cart badge takes to update. With Playwright, you click and assert — the framework watches the page for you.</p>
+
+        <div class="card ph3-card">
+          <div class="card-head">
+            <div class="card-num">❌</div>
+            <div class="card-title">The Selenium Problem</div>
+            <span class="card-badge">Manual waits</span>
+          </div>
+          <div class="card-body">
+            <pre><code>// Selenium: Manual waiting everywhere
+await driver.findElement(By.css('.add-to-cart')).click();
+await driver.wait(until.elementLocated(By.css('.cart-count')), 5000);
+await driver.wait(until.elementTextIs(
+  driver.findElement(By.css('.cart-count')), '1'
+), 5000);</code></pre>
+            <p style="margin-top: 1rem;"><strong>What could go wrong?</strong></p>
+            <ul>
+              <li>Element exists but isn't clickable yet (behind a modal)</li>
+              <li>Element is visible but still animating</li>
+              <li>Cart count element exists but text hasn't updated</li>
+              <li>Network is slow — 5 seconds isn't enough</li>
+              <li>Network is fast — you're wasting 4.9 seconds waiting</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card ph4-card">
+          <div class="card-head">
+            <div class="card-num">✅</div>
+            <div class="card-title">The Playwright Solution</div>
+            <span class="card-badge">Auto-wait built in</span>
+          </div>
+          <div class="card-body">
+            <pre><code>// Playwright: Auto-wait built in
+await page.getByRole('button', { name: 'Add to Cart' }).click();
+await expect(page.getByTestId('cart-count')).toHaveText('1');</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="wp-comparison">
+        <div class="sec-label">📊 Side by Side</div>
+        <h2>Feature Comparison</h2>
+
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Feature</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Selenium</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Playwright</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Auto-wait</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Manual waits required</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Built-in for all actions</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Multiple browsers</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Requires separate drivers</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Single API, all browsers</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Network mocking</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Limited (proxy-based)</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Native <code>page.route()</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">API testing</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Not built-in</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Full request API</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Screenshots/Video</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Basic support</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Built-in with trace viewer</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Mobile emulation</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Limited</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">100+ device profiles</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Parallel execution</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Test-framework dependent</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Native workers</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Browser contexts</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">New browser per test</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Isolated contexts (fast)</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Debugging</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Browser dev tools</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Trace Viewer + Inspector</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec" id="wp-when-selenium">
+        <div class="sec-label">🤔 Decision Guide</div>
+        <h2>When to Choose Selenium</h2>
+        <p>Selenium isn't dead. Choose it when:</p>
+        <ol>
+          <li><strong>Legacy system requirements</strong> — your company has 10,000 Selenium tests and migration cost exceeds maintenance cost.</li>
+          <li><strong>Exotic browsers</strong> — Selenium supports browsers Playwright doesn't (Safari on Windows via RemoteWebDriver, older browser versions).</li>
+          <li><strong>Non-JavaScript environments</strong> — Selenium has mature bindings for Java, Python, C#, Ruby. Playwright's Java/Python support is strong but newer.</li>
+          <li><strong>Grid-based testing infrastructure</strong> — if you've invested heavily in Selenium Grid, Sauce Labs, or BrowserStack Selenium integration.</li>
+        </ol>
+      </div>
+
+      <div class="sec" id="wp-when-playwright">
+        <div class="sec-label">✅ Decision Guide</div>
+        <h2>When to Choose Playwright</h2>
+        <p>Choose Playwright when:</p>
+        <ol>
+          <li><strong>Starting a new project</strong> — no legacy tests to migrate. Start with the modern approach.</li>
+          <li><strong>Flaky tests are costing you</strong> — if your team spends hours debugging flaky tests, Playwright's auto-wait pays for the migration.</li>
+          <li><strong>You need API + UI testing</strong> — Playwright's request context lets you bypass UI for setup/teardown. Huge time savings for e-commerce tests.</li>
+          <li><strong>Mobile web testing matters</strong> — built-in device emulation for testing responsive e-commerce on iPhone, Android, tablets.</li>
+          <li><strong>You want better debugging</strong> — Trace Viewer shows exactly what happened in failed tests: screenshot, DOM snapshot, network logs, all in one timeline.</li>
+        </ol>
+      </div>
+
+      <div class="sec" id="wp-migration">
+        <div class="sec-label">📈 Case Study</div>
+        <h2>Real-World: E-Commerce Migration</h2>
+        <p>A mid-size e-commerce company (shared at TestJS Summit 2024) migrated from Selenium to Playwright — like renovating a busy store while keeping the doors open. They didn't delete old tests on day one; they moved checkout tests first because that's where pain was highest.</p>
+
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Metric</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Before (Selenium)</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">After (Playwright)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Test suite runtime</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">45 minutes</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>12 minutes</strong></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Flaky test rate</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">18%</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>3%</strong></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Time to debug failures</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">30+ min</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>5 min</strong> (Trace Viewer)</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Checkout test reliability</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">72%</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>98%</strong></td></tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top: 1rem;">The checkout flow was their biggest pain point. Selenium tests failed on payment processing, shipping calculation updates, and inventory checks. Playwright's auto-wait eliminated most failures.</p>
+      </div>
+
+      <div class="sec" id="wp-career">
+        <div class="sec-label">💼 Career</div>
+        <h2>Career Context</h2>
+        <p>As an SDET, your framework choice is like picking tools for a toolbox — you want the right wrench for today's job, but interviewers still respect someone who can use the whole set.</p>
+
+        <p><strong>Job market reality (2026):</strong></p>
+        <ul>
+          <li>Playwright job postings: <strong>+340% since 2023</strong></li>
+          <li>Selenium still leads in total postings (legacy)</li>
+          <li>New companies heavily favor Playwright/Cypress</li>
+        </ul>
+
+        <p><strong>Skills that transfer:</strong></p>
+        <ul>
+          <li>Locator strategies (CSS, XPath) work in both</li>
+          <li>Page Object Model pattern applies to both</li>
+          <li>CI/CD integration concepts are framework-agnostic</li>
+        </ul>
+
+        <p><strong>Resume positioning:</strong></p>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 0.5rem;">✅ <strong>Strong:</strong> "Playwright, Selenium, Cypress" (versatility)</li>
+          <li style="margin-bottom: 0.5rem;">✅ <strong>Good:</strong> "Playwright specialist" (modern, in-demand)</li>
+          <li>❌ <strong>Risky:</strong> "Selenium only" (might seem dated)</li>
+        </ul>
+      </div>
+
+      <div class="sec" id="wp-code-preview">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Code Preview: Same Test, Both Frameworks</h2>
+        <p>Searching for "wireless headphones" on a shop site is like asking a store clerk vs using the store app. Both can find products — but one needs a lot more back-and-forth. Here's the same test in both frameworks:</p>
+
+        <div class="card ph1-card">
+          <div class="card-head">
+            <div class="card-num">1</div>
+            <div class="card-title">Selenium</div>
+            <span class="card-badge">Verbose</span>
+          </div>
+          <div class="card-body">
+            <pre><code>import { Builder, By, until } from 'selenium-webdriver';
+
+describe('Product Search', () => {
+  let driver;
+
+  beforeAll(async () => {
+    driver = await new Builder().forBrowser('chrome').build();
+  });
+
+  afterAll(async () => {
+    await driver.quit();
+  });
+
+  test('can search for products', async () => {
+    await driver.get('https://shop.example.com');
+
+    const searchBox = await driver.findElement(
+      By.css('[data-testid="search-input"]')
+    );
+    await searchBox.sendKeys('wireless headphones');
+    await searchBox.submit();
+
+    await driver.wait(
+      until.elementLocated(By.css('[data-testid="product-card"]')),
+      10000
+    );
+
+    const products = await driver.findElements(
+      By.css('[data-testid="product-card"]')
+    );
+    expect(products.length).toBeGreaterThan(0);
+  });
+});</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head">
+            <div class="card-num">2</div>
+            <div class="card-title">Playwright</div>
+            <span class="card-badge">Concise</span>
+          </div>
+          <div class="card-body">
+            <pre><code>import { test, expect } from '@playwright/test';
+
+test('can search for products', async ({ page }) => {
+  await page.goto('https://shop.example.com');
+
+  await page.getByTestId('search-input').fill('wireless headphones');
+  await page.getByTestId('search-input').press('Enter');
+
+  await expect(page.getByTestId('product-card').first()).toBeVisible();
+
+  const products = await page.getByTestId('product-card').count();
+  expect(products).toBeGreaterThan(0);
+});</code></pre>
+          </div>
+        </div>
+
+        <p><strong>Notice:</strong></p>
+        <ul>
+          <li>No manual waits in Playwright</li>
+          <li>No browser setup/teardown (Playwright handles it)</li>
+          <li>Cleaner locator API (<code>getByTestId</code> vs <code>findElement(By.css(...))</code>)</li>
+        </ul>
+      </div>
+
+      <div class="sec" id="wp-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Assuming Playwright replaces Selenium overnight:</strong> A team with 5,000 Selenium tests can't flip a switch. Migration takes planning.
+            <br>✅ <strong>Run both during a transition</strong> — new tests in Playwright, legacy in Selenium, migrate high-value flows first.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Choosing based on hype alone:</strong> "Everyone uses Playwright now" ignores your team's skills, CI setup, and browser needs.
+            <br>✅ <strong>Evaluate your real pain points</strong> — flaky tests, slow runs, debugging time — then pick the tool that fixes them.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Thinking Selenium is "dead":</strong> It's still the most-used framework in enterprise. Dismissing it looks uninformed in interviews.
+            <br>✅ <strong>Learn both, lead with Playwright for new work</strong> — versatility beats fanboy picks.
+          </li>
+          <li>
+            ❌ <strong>Ignoring auto-wait and writing Selenium-style tests in Playwright:</strong> Adding <code>waitForTimeout</code> defeats the whole point.
+            <br>✅ <strong>Trust the framework</strong> — use locators and <code>expect()</code>; let Playwright wait for you.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="wp-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong>Architecture matters:</strong> WebSocket beats HTTP for test stability</li>
+          <li><strong>Auto-wait is transformative:</strong> 3.6× fewer flaky tests</li>
+          <li><strong>Selenium isn't wrong:</strong> It's proven, mature, and has its place</li>
+          <li><strong>Playwright excels at:</strong> Modern apps, async behavior, debugging</li>
+          <li><strong>E-commerce specifically:</strong> Payment flows, cart updates, inventory checks all benefit from auto-wait</li>
+          <li><strong>Career-wise:</strong> Learn both, lead with Playwright for new projects</li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> In the next lesson, we'll install Playwright and write your first e-commerce test. You'll see auto-wait in action immediately.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="wp-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Concept</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Remember</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Selenium transport</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">HTTP → WebDriver server → browser</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Playwright transport</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">WebSocket via CDP (direct)</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Flaky test gap</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">23% (Selenium) vs 6.4% (Playwright) CI failures</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Auto-wait checks</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Attached, visible, stable, enabled, receives events</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Network mocking</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>page.route()</code> (native in Playwright)</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Debugging</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Trace Viewer — screenshot + DOM + network timeline</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

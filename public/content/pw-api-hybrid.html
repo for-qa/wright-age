@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>API Testing &amp; Hybrid Workflows — Playwright Learning Path</title>
+  <meta name="description" content="Playwright request fixture, API auth, hybrid setup, test data factories, contract testing, and e-commerce speed patterns." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">API &amp; Hybrid</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-api">
+      <div class="nav-logo"><div class="v">Speed</div><h2>API + UI</h2></div>
+      <div class="nav-group">Why Hybrid</div>
+      <a href="#api-intro">API &amp; Hybrid</a>
+      <a href="#api-speed">The Speed Problem</a>
+      <div class="nav-group">Request API</div>
+      <a href="#api-request">Request Context</a>
+      <a href="#api-methods">HTTP Methods</a>
+      <a href="#api-options">Request Options</a>
+      <div class="nav-group">Auth</div>
+      <a href="#api-auth">API Authentication</a>
+      <a href="#api-auth-setup">Setup Project</a>
+      <a href="#api-auth-fixture">Auth Fixtures</a>
+      <div class="nav-group">Patterns</div>
+      <a href="#api-hybrid">Hybrid Patterns</a>
+      <a href="#api-factory">Test Data Factory</a>
+      <a href="#api-validation">Response Validation</a>
+      <a href="#api-performance">Performance</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#api-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#api-takeaways">Key Takeaways</a>
+      <a href="#api-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="api-top">
+        <div class="hero-tags">
+          <span class="hero-tag">request</span>
+          <span class="hero-tag">Hybrid</span>
+          <span class="hero-tag">3× Faster</span>
+        </div>
+        <h1>API Testing <span>&amp; Hybrid</span></h1>
+        <p>Here's a secret: the fastest UI test is one that <strong>doesn't use the UI</strong> when it doesn't have to. Playwright's API layer lets you skip slow setup and teardown.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">3×</div><div class="stat-l">Faster Checkout</div></div>
+          <div class="stat"><div class="stat-n">1</div><div class="stat-l">request Fixture</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="api-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>API Testing &amp; Hybrid Workflows</h2>
+        <p>Imagine moving into a furnished apartment: you wouldn't build every piece of furniture from scratch just to test the light switch. For e-commerce tests, <strong>API calls</strong> furnish the cart and user session; the <strong>UI</strong> verifies what users actually see on the confirmation page.</p>
+        <p>Playwright's <code>{ request }</code> fixture sends HTTP calls in the same test run as your browser — same cookies, same auth context when configured.</p>
+      </div>
+
+      <div class="sec" id="api-speed">
+        <div class="sec-label">⚡ Real-Life Example</div>
+        <h2>The Speed Problem</h2>
+        <p>A full UI checkout might take <strong>~13 seconds</strong> — homepage, search, product page, cart, form, submit. If you only care about the confirmation screen, the first six steps are just <em>setup</em>.</p>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Approach</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Steps</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">~Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Pure UI checkout</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Browse → cart → form → submit → verify</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~13s</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Hybrid API + UI</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">API cart → goto checkout → submit (UI) → verify</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~4.2s (3× faster)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec" id="api-request">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Playwright Request Context</h2>
+        <p>The <code>request</code> fixture is your direct line to the backend — no browser rendering required.</p>
+        <pre><code>test('fetch products via API', async ({ request }) => {
+  const response = await request.get('https://api.shop.example/products');
+
+  expect(response.ok()).toBeTruthy();
+  expect(response.status()).toBe(200);
+
+  const products = await response.json();
+  expect(products.length).toBeGreaterThan(0);
+  expect(products[0]).toHaveProperty('name');
+  expect(products[0]).toHaveProperty('price');
+});</code></pre>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">POST</div><div class="card-title">Create order via API</div></div>
+          <div class="card-body">
+            <pre><code>const response = await request.post('https://api.shop.example/orders', {
+  data: {
+    items: [
+      { productId: 'SKU-001', quantity: 2 },
+      { productId: 'SKU-002', quantity: 1 },
+    ],
+    shippingAddress: {
+      street: '123 Main St',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94102',
+    },
+  },
+});
+
+const order = await response.json();
+expect(order.orderId).toBeDefined();
+expect(order.status).toBe('pending');</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="api-methods">
+        <div class="sec-label">📋 Reference</div>
+        <h2>All HTTP Methods</h2>
+        <pre><code>await request.get('/api/products');
+await request.post('/api/products', { data: { name: 'New', price: 29.99 } });
+await request.put('/api/products/123', { data: { name: 'Updated', price: 39.99 } });
+await request.patch('/api/products/123', { data: { price: 24.99 } });
+await request.delete('/api/products/123');  // expect 204</code></pre>
+      </div>
+
+      <div class="sec" id="api-options">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Request Options</h2>
+        <p>Headers, query params, and timeouts — like adding your membership card and filters to a store API call.</p>
+        <pre><code>const response = await request.get('https://api.shop.example/user/orders', {
+  headers: {
+    'Authorization': 'Bearer your-token-here',
+    'Content-Type': 'application/json',
+  },
+  params: { limit: 10, status: 'completed' },
+  timeout: 30000,
+});</code></pre>
+      </div>
+
+      <div class="sec" id="api-auth">
+        <div class="sec-label">🔐 Real-Life Example</div>
+        <h2>API-Based Authentication</h2>
+        <p>Logging in through the UI in <code>beforeEach</code> costs 3–5 seconds <em>per test</em> — like showing ID at every store aisle instead of once at the door.</p>
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">❌</div><div class="card-title">Slow: UI login every test</div></div>
+          <div class="card-body">
+            <pre><code>test.beforeEach(async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('user@example.com');
+  await page.getByLabel('Password').fill('password123');
+  await page.getByRole('button', { name: 'Login' }).click();
+  // 3-5 seconds × 100 tests = painful
+});</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="api-auth-setup">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Solution 1: API Login + storageState</h2>
+        <p>Log in once via API, save cookies/localStorage, reuse in every test — show ID once at the door.</p>
+        <pre><code>// auth.setup.ts
+const authFile = 'playwright/.auth/user.json';
+
+setup('authenticate', async ({ request }) => {
+  const response = await request.post('/api/auth/login', {
+    data: { email: 'user@example.com', password: 'password123' },
+  });
+  expect(response.ok()).toBeTruthy();
+  await request.storageState({ path: authFile });
+});
+
+// playwright.config.ts
+projects: [
+  { name: 'setup', testMatch: /.*\.setup\.ts/ },
+  {
+    name: 'chromium',
+    dependencies: ['setup'],
+    use: { storageState: 'playwright/.auth/user.json' },
+  },
+]</code></pre>
+      </div>
+
+      <div class="sec" id="api-auth-fixture">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Solution 2: Fixture-Based Auth</h2>
+        <p>Custom fixtures expose <code>authToken</code> and an <code>authenticatedRequest</code> with Bearer headers baked in.</p>
+        <pre><code>export const test = base.extend&lt;AuthFixture&gt;({
+  authToken: async ({ request }, use) => {
+    const response = await request.post('/api/auth/login', {
+      data: {
+        email: process.env.TEST_USER_EMAIL,
+        password: process.env.TEST_USER_PASSWORD,
+      },
+    });
+    const { token } = await response.json();
+    await use(token);
+  },
+
+  authenticatedRequest: async ({ playwright, authToken }, use) => {
+    const context = await playwright.request.newContext({
+      extraHTTPHeaders: { 'Authorization': `Bearer ${authToken}` },
+    });
+    await use(context);
+    await context.dispose();
+  },
+});</code></pre>
+      </div>
+
+      <div class="sec" id="api-hybrid">
+        <div class="sec-label">🔄 Real-Life Example</div>
+        <h2>Hybrid API + UI Patterns</h2>
+
+        <div class="card ph1-card">
+          <div class="card-head"><div class="card-num">1</div><div class="card-title">API setup, UI verification</div></div>
+          <div class="card-body">
+            <pre><code>const { orderId } = await (await request.post('/api/orders', { data: orderPayload })).json();
+
+await page.goto(`/orders/${orderId}/confirmation`);
+await expect(page.getByRole('heading', { name: 'Order Confirmed' })).toBeVisible();
+await expect(page.getByText(orderId)).toBeVisible();</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph2-card">
+          <div class="card-head"><div class="card-num">2</div><div class="card-title">API cart population</div></div>
+          <div class="card-body">
+            <pre><code>await request.post('/api/cart/items', { data: { productId: 'SKU-001', quantity: 2 } });
+await request.post('/api/cart/items', { data: { productId: 'SKU-002', quantity: 1 } });
+
+await page.goto('/checkout');
+await expect(page.getByTestId('cart-item')).toHaveCount(2);</code></pre>
+          </div>
+        </div>
+
+        <div class="card ph4-card">
+          <div class="card-head"><div class="card-num">3</div><div class="card-title">API cleanup after UI test</div></div>
+          <div class="card-body">
+            <pre><code>// UI: complete checkout (what we're testing)
+const orderId = await page.getByTestId('order-id').textContent();
+
+// API: cancel / refund test order
+await request.post(`/api/orders/${orderId}/cancel`, {
+  data: { reason: 'Test cleanup' },
+});</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="api-factory">
+        <div class="sec-label">🏭 Code Example</div>
+        <h2>Test Data Factory</h2>
+        <p>A factory is a backstage crew — creates users, products, and orders via API, then tears them down so tests stay isolated.</p>
+        <pre><code>export class TestDataFactory {
+  constructor(private request: APIRequestContext) {}
+
+  async createProduct(data?: Partial&lt;ProductData&gt;): Promise&lt;string&gt; {
+    const response = await this.request.post('/api/products', {
+      data: { name: `Test Product ${Date.now()}`, price: 29.99, stock: 100, ...data },
+    });
+    const { productId } = await response.json();
+    return productId;
+  }
+
+  async cleanup(resource: string, id: string): Promise&lt;void&gt; {
+    await this.request.delete(`/api/${resource}/${id}`);
+  }
+}
+
+// In test:
+const productId = await factory.createProduct({ name: 'Test Widget', price: 19.99 });
+await page.goto(`/products/${productId}`);
+await factory.cleanup('products', productId);</code></pre>
+      </div>
+
+      <div class="sec" id="api-validation">
+        <div class="sec-label">✅ Code Example</div>
+        <h2>API Response Validation</h2>
+        <p><strong>Schema checks</strong> — required fields, types, sane values. <strong>Contract tests</strong> — shape of cart JSON without opening a browser.</p>
+        <pre><code>const product = await response.json();
+expect(typeof product.price).toBe('number');
+expect(product.price).toBeGreaterThan(0);
+
+// Contract
+const cart = await (await request.get('/api/cart')).json();
+expect(cart).toMatchObject({
+  items: expect.any(Array),
+  subtotal: expect.any(Number),
+  tax: expect.any(Number),
+  total: expect.any(Number),
+});</code></pre>
+      </div>
+
+      <div class="sec" id="api-performance">
+        <div class="sec-label">📊 Comparison</div>
+        <h2>Performance at Scale</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Approach</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">100 Tests</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">4 Workers</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Pure UI</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~22 min</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~6 min</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Hybrid API + UI</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~8 min</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~2.5 min</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Pure API</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~45 sec</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">~15 sec</td></tr>
+          </tbody>
+        </table>
+        <p>For e-commerce, <strong>hybrid is the sweet spot</strong>: fast API setup, critical path verified in the UI.</p>
+      </div>
+
+      <div class="sec" id="api-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Hybrid everything:</strong> Using API for the entire checkout when the test goal is "user can complete purchase."
+            <br>✅ <strong>API only for setup/teardown</strong> — UI for the behavior under test.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Skipping cleanup:</strong> API-created orders pile up in staging.
+            <br>✅ <strong>Cancel/delete via API</strong> in <code>afterEach</code> or factory <code>cleanup()</code>.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>UI login in every test</strong> when API auth + <code>storageState</code> exists.
+            <br>✅ <strong>One setup project</strong> or auth fixture — reuse session.
+          </li>
+          <li>
+            ❌ <strong>Assuming API and UI share state without cookies:</strong> Cart API may need same session as browser.
+            <br>✅ <strong>Use shared storageState</strong> or ensure <code>request</code> inherits cookies from context.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="api-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong><code>request</code> fixture</strong> — API calls in the same test context</li>
+          <li><strong>API auth + storageState</strong> — massive login time savings</li>
+          <li><strong>Hybrid</strong> — fast API setup + UI verification of what users see</li>
+          <li><strong>Test data factories</strong> — isolated, repeatable data</li>
+          <li><strong>API cleanup</strong> — keep staging environments clean</li>
+          <li><strong>Contract testing</strong> — validate API shape without UI</li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> Real APIs are great — but how do you test payment failures or network errors? Next we'll learn <strong>network mocking</strong> to simulate any scenario.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="api-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Goal</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Pattern</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Fast cart setup</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>request.post('/api/cart/items')</code> then <code>page.goto('/checkout')</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Skip UI login</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">API login → <code>storageState</code> → config <code>dependencies: ['setup']</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Test confirmation page</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">API create order → UI assert on <code>/orders/{id}/confirmation</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Isolated test data</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>TestDataFactory</code> create + <code>cleanup()</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">API-only contract</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>toMatchObject</code> on cart JSON shape</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Bearer token tests</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Custom fixture <code>authenticatedRequest</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>

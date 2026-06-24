@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Page Object Model for E-Commerce — Playwright Learning Path</title>
+  <meta name="description" content="POM architecture, page objects, components, flows, and maintainable e-commerce test structure in Playwright." />
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-brand"><div class="tb-brand-icon">PW</div>
+      <div><div class="tb-brand-name">Playwright Learning Path</div><div class="tb-brand-sub">E2E Testing Guide</div></div>
+    </div>
+    <a class="tb-back" href="../index.html">← Back to Index</a>
+    <div class="tb-topic-title">Page Object Model</div>
+  </div>
+
+  <div class="page-wrap"><div class="wrap">
+    <nav id="nav-pom">
+      <div class="nav-logo"><div class="v">Patterns</div><h2>POM</h2></div>
+      <div class="nav-group">The Problem</div>
+      <a href="#pom-intro">Page Object Model</a>
+      <a href="#pom-problem">Test Maintenance</a>
+      <div class="nav-group">Architecture</div>
+      <a href="#pom-architecture">Three Layers</a>
+      <a href="#pom-structure">Project Structure</a>
+      <div class="nav-group">Page Objects</div>
+      <a href="#pom-base-page">BasePage</a>
+      <a href="#pom-product-page">ProductPage</a>
+      <a href="#pom-cart-page">CartPage</a>
+      <a href="#pom-checkout-page">CheckoutPage</a>
+      <div class="nav-group">Reuse</div>
+      <a href="#pom-components">Components</a>
+      <a href="#pom-flows">Flow Layer</a>
+      <a href="#pom-tests">Tests with POM</a>
+      <div class="nav-group">Watch Out!</div>
+      <a href="#pom-mistakes">⚠ Common Mistakes</a>
+      <div class="nav-group">Reference</div>
+      <a href="#pom-takeaways">Key Takeaways</a>
+      <a href="#pom-cheatsheet">Cheatsheet</a>
+    </nav>
+
+    <div class="content">
+      <div class="hero" id="pom-top">
+        <div class="hero-tags">
+          <span class="hero-tag">POM</span>
+          <span class="hero-tag">Maintainability</span>
+          <span class="hero-tag">E-Commerce</span>
+        </div>
+        <h1>Page Object <span>Model</span></h1>
+        <p>Your suite will grow to hundreds of tests. Without structure, duplicated locators pile up — and one UI rename breaks dozens of specs. POM fixes that.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="stat-n">3</div><div class="stat-l">Layers</div></div>
+          <div class="stat"><div class="stat-n">1×</div><div class="stat-l">Locator per Element</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="pom-intro">
+        <div class="sec-label">🎯 What is it?</div>
+        <h2>Page Object Model (POM)</h2>
+        <p>Think of a restaurant: the <strong>menu</strong> tells customers what they can order (tests), the <strong>kitchen workflow</strong> knows how dishes are prepared (flows), and each <strong>station</strong> knows where ingredients live (page objects).</p>
+        <p>POM wraps each page in a class that owns <strong>locators</strong> and <strong>actions</strong>. Tests call <code>productPage.addToCart()</code> instead of repeating raw selectors — one place to update when the cart badge class changes.</p>
+      </div>
+
+      <div class="sec" id="pom-problem">
+        <div class="sec-label">⚠️ The Pain</div>
+        <h2>The Problem: Test Maintenance</h2>
+        <p>Without POM, every spec copy-pastes the same locators. When <code>.cart-count</code> becomes <code>.CartBadge__count</code>, you hunt through 50 files — like changing your address in 50 apps instead of one profile.</p>
+
+        <div class="card ph3-card">
+          <div class="card-head"><div class="card-num">❌</div><div class="card-title">Duplicated locators across specs</div></div>
+          <div class="card-body">
+            <pre><code>// test-1.spec.ts
+test('can add to cart', async ({ page }) => {
+  await page.goto('/products/laptop');
+  await page.getByRole('button', { name: 'Add to Cart' }).click();
+  await expect(page.locator('.cart-count')).toHaveText('1');
+});
+
+// test-2.spec.ts — same locators again
+test('can checkout', async ({ page }) => {
+  await page.goto('/products/laptop');
+  await page.getByRole('button', { name: 'Add to Cart' }).click();
+  await page.locator('.cart-count').click();
+});</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" id="pom-architecture">
+        <div class="sec-label">🏗️ Architecture</div>
+        <h2>Three-Layer Architecture</h2>
+        <p>Separate <em>what</em> you test from <em>how</em> workflows run and <em>where</em> elements live:</p>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Layer</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Responsibility</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Test</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">What we're testing — cases, data, assertions</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>checkout.spec.ts</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Flow</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">How business processes work — multi-page</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>CheckoutFlow.ts</code></td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><strong>Page Object</strong></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Where elements are — single-page actions</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>CartPage.ts</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec" id="pom-structure">
+        <div class="sec-label">📁 Structure</div>
+        <h2>Project Structure</h2>
+        <p>A typical e-commerce Playwright project organizes files by responsibility:</p>
+        <pre><code>tests/
+├── pages/
+│   ├── BasePage.ts
+│   ├── HomePage.ts
+│   ├── ProductPage.ts
+│   ├── CartPage.ts
+│   ├── CheckoutPage.ts
+│   └── OrderConfirmationPage.ts
+├── components/
+│   ├── Header.ts
+│   ├── ProductCard.ts
+│   ├── CartItem.ts
+│   └── Footer.ts
+├── flows/
+│   ├── CheckoutFlow.ts
+│   └── SearchFlow.ts
+├── fixtures/
+│   └── test-fixtures.ts
+└── specs/
+    ├── cart.spec.ts
+    ├── checkout.spec.ts
+    └── search.spec.ts</code></pre>
+      </div>
+
+      <div class="sec" id="pom-base-page">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Base Page</h2>
+        <p>Shared pieces — header, footer, loading spinner, cart count — live in a parent class every page extends. Like a store's common entrance every department shares.</p>
+        <pre><code>export class BasePage {
+  readonly page: Page;
+  readonly header: Locator;
+  readonly footer: Locator;
+  readonly loadingSpinner: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.header = page.getByRole('banner');
+    this.footer = page.getByRole('contentinfo');
+    this.loadingSpinner = page.getByTestId('loading-spinner');
+  }
+
+  async waitForPageLoad(): Promise&lt;void&gt; {
+    await this.loadingSpinner.waitFor({ state: 'hidden' });
+  }
+
+  async getCartCount(): Promise&lt;string&gt; {
+    return await this.header.getByTestId('cart-count').textContent() || '0';
+  }
+
+  async goToCart(): Promise&lt;void&gt; {
+    await this.header.getByRole('link', { name: 'Cart' }).click();
+  }
+}</code></pre>
+      </div>
+
+      <div class="sec" id="pom-product-page">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>Product Page</h2>
+        <p>One class owns product title, price, quantity, variants, and <code>addToCart()</code> with optional size/color/quantity — tests stay readable.</p>
+        <pre><code>export class ProductPage extends BasePage {
+  readonly addToCartButton: Locator;
+  readonly quantityInput: Locator;
+  readonly sizeSelector: Locator;
+
+  constructor(page: Page) {
+    super(page);
+    this.addToCartButton = page.getByRole('button', { name: 'Add to Cart' });
+    this.quantityInput = page.getByRole('spinbutton', { name: 'Quantity' });
+    this.sizeSelector = page.getByRole('combobox', { name: 'Size' });
+  }
+
+  async goto(productSlug: string): Promise&lt;void&gt; {
+    await this.page.goto(`/products/${productSlug}`);
+    await this.waitForPageLoad();
+  }
+
+  async addToCart(options?: { quantity?: number; size?: string }) {
+    if (options?.size) await this.sizeSelector.selectOption(options.size);
+    if (options?.quantity) await this.quantityInput.fill(String(options.quantity));
+    await this.addToCartButton.click();
+  }
+
+  async expectProductLoaded(name: string) {
+    await expect(this.productTitle).toContainText(name);
+    await expect(this.productPrice).toBeVisible();
+  }
+}</code></pre>
+      </div>
+
+      <div class="sec" id="pom-cart-page">
+        <div class="sec-label">🛒 Real-Life Example</div>
+        <h2>Cart Page</h2>
+        <p>Cart logic — items, promo codes, totals — stays in one file. Filter by product name to update quantity or remove lines.</p>
+        <pre><code>getCartItem(productName: string): Locator {
+  return this.cartItems.filter({ hasText: productName });
+}
+
+async applyPromoCode(code: string): Promise&lt;void&gt; {
+  await this.promoCodeInput.fill(code);
+  await this.applyPromoButton.click();
+  await this.waitForPageLoad();
+}
+
+async expectCartHasItems(count: number): Promise&lt;void&gt; {
+  await expect(this.cartItems).toHaveCount(count);
+}
+
+async expectTotal(amount: string): Promise&lt;void&gt; {
+  await expect(this.cartTotal).toHaveText(amount);
+}</code></pre>
+      </div>
+
+      <div class="sec" id="pom-checkout-page">
+        <div class="sec-label">💻 Code Example</div>
+        <h2>Checkout Page</h2>
+        <p>Shipping, payment, and order summary grouped with typed helpers — fill address once, select shipping method, place order.</p>
+        <pre><code>async fillShippingAddress(address: ShippingAddress): Promise&lt;void&gt; {
+  await this.firstNameInput.fill(address.firstName);
+  await this.lastNameInput.fill(address.lastName);
+  await this.emailInput.fill(address.email);
+  await this.addressInput.fill(address.address);
+  await this.cityInput.fill(address.city);
+  await this.stateSelect.selectOption(address.state);
+  await this.zipCodeInput.fill(address.zipCode);
+}
+
+async selectShippingMethod(method: 'standard' | 'express' | 'overnight') {
+  const options = { standard: this.standardShipping, express: this.expressShipping, overnight: this.overnightShipping };
+  await options[method].check();
+}
+
+async fillPaymentInfo(payment: PaymentInfo): Promise&lt;void&gt; {
+  await this.cardNumberInput.fill(payment.cardNumber);
+  await this.expirationInput.fill(payment.expiration);
+  await this.cvvInput.fill(payment.cvv);
+  await this.nameOnCardInput.fill(payment.nameOnCard);
+}</code></pre>
+      </div>
+
+      <div class="sec" id="pom-components">
+        <div class="sec-label">🧩 Reuse</div>
+        <h2>Component Objects</h2>
+        <p>Header, ProductCard, and Footer appear on many pages — extract them like reusable LEGO bricks instead of rebuilding each time.</p>
+        <pre><code>// components/Header.ts — scoped to banner
+export class Header {
+  readonly cartCount: Locator;
+  constructor(page: Page) {
+    const container = page.getByRole('banner');
+    this.cartCount = container.getByTestId('cart-count');
+    this.cartLink = container.getByRole('link', { name: /cart/i });
+  }
+  async goToCart() { await this.cartLink.click(); }
+}
+
+// components/ProductCard.ts — takes a container locator
+export class ProductCard {
+  constructor(container: Locator) {
+    this.name = container.getByRole('heading');
+    this.addToCartButton = container.getByRole('button', { name: 'Add to Cart' });
+  }
+  async addToCart() { await this.addToCartButton.click(); }
+}</code></pre>
+      </div>
+
+      <div class="sec" id="pom-flows">
+        <div class="sec-label">🔄 Real-Life Example</div>
+        <h2>Flow Layer</h2>
+        <p>Flows stitch pages into business journeys — "complete checkout" or "search and buy" — so tests don't repeat 15 steps.</p>
+        <pre><code>export class CheckoutFlow {
+  constructor(page: Page) {
+    this.cartPage = new CartPage(page);
+    this.checkoutPage = new CheckoutPage(page);
+  }
+
+  async completeCheckout(data: CheckoutData): Promise&lt;void&gt; {
+    await this.cartPage.proceedToCheckout();
+    await this.checkoutPage.fillShippingAddress(data.shipping);
+    await this.checkoutPage.selectShippingMethod(data.shippingMethod);
+    await this.checkoutPage.fillPaymentInfo(data.payment);
+    await this.checkoutPage.placeOrder();
+  }
+
+  async applyPromoAndCheckout(promoCode: string, data: CheckoutData) {
+    await this.cartPage.applyPromoCode(promoCode);
+    await this.completeCheckout(data);
+  }
+}</code></pre>
+      </div>
+
+      <div class="sec" id="pom-tests">
+        <div class="sec-label">✅ Tests</div>
+        <h2>Using Page Objects in Tests</h2>
+        <p>Specs read like requirements — add product, verify cart, checkout — not like CSS archaeology.</p>
+        <pre><code>test('complete purchase with single item', async ({ page }) => {
+  const productPage = new ProductPage(page);
+  const cartPage = new CartPage(page);
+  const checkoutPage = new CheckoutPage(page);
+
+  await productPage.goto('wireless-headphones');
+  await productPage.addToCart({ quantity: 1, color: 'Black' });
+
+  await cartPage.goto();
+  await cartPage.expectCartHasItems(1);
+
+  await cartPage.proceedToCheckout();
+  await checkoutPage.fillShippingAddress(testShipping);
+  await checkoutPage.selectShippingMethod('standard');
+  await checkoutPage.fillPaymentInfo(testPayment);
+  await checkoutPage.placeOrder();
+
+  await expect(page.getByText('Order Confirmed')).toBeVisible();
+});
+
+test('complete purchase using flow helper', async ({ page }) => {
+  const productPage = new ProductPage(page);
+  const cartPage = new CartPage(page);
+  const checkoutFlow = new CheckoutFlow(page);
+
+  await productPage.goto('wireless-headphones');
+  await productPage.addToCart();
+  await cartPage.goto();
+
+  await checkoutFlow.completeCheckout({ shipping: testShipping, shippingMethod: 'express', payment: testPayment });
+  await expect(page.getByText('Order Confirmed')).toBeVisible();
+});</code></pre>
+      </div>
+
+      <div class="sec" id="pom-mistakes">
+        <div class="sec-label">⚠️ Watch Out!</div>
+        <h2>Common Mistakes</h2>
+        <ul style="list-style-type: none; padding: 0;">
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>God page object:</strong> One 800-line class with every locator on the site.
+            <br>✅ <strong>One class per page/section</strong> plus small components.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Assertions only in tests, actions only in pages — but locators duplicated in both.</strong>
+            <br>✅ <strong>Locators live in page objects only</strong>; tests call <code>cartPage.expectTotal('$99')</code>.
+          </li>
+          <li style="margin-bottom: 1rem;">
+            ❌ <strong>Putting test data inside page classes:</strong> Hard-coded emails in <code>CheckoutPage</code>.
+            <br>✅ <strong>Pass data from tests or fixtures</strong> into <code>fillShippingAddress(data)</code>.
+          </li>
+          <li>
+            ❌ <strong>Skipping flows and duplicating 10-step checkout in every spec.</strong>
+            <br>✅ <strong>Use flows</strong> for repeated multi-page journeys; keep specs focused on the scenario.
+          </li>
+        </ul>
+      </div>
+
+      <div class="sec" id="pom-takeaways">
+        <div class="sec-label">📝 Summary</div>
+        <h2>Key Takeaways</h2>
+        <ul>
+          <li><strong>Single source of truth</strong> — locators defined once in page objects</li>
+          <li><strong>Three layers</strong> — Pages (where), Flows (how), Tests (what)</li>
+          <li><strong>DRY</strong> — no duplicate locators or setup code</li>
+          <li><strong>Easy maintenance</strong> — UI change = one file update</li>
+          <li><strong>Readability</strong> — tests read like business requirements</li>
+          <li><strong>Components</strong> — reusable Header, ProductCard, etc.</li>
+        </ul>
+
+        <div class="note note-info">
+          <span class="note-i">i</span>
+          <p><strong>Next lesson:</strong> Tests are organized — but still slow when everything goes through the UI. Next we'll learn <strong>API testing and hybrid workflows</strong> to speed up execution.</p>
+        </div>
+      </div>
+
+      <div class="sec" id="pom-cheatsheet">
+        <div class="sec-label">📋 Reference</div>
+        <h2>Cheatsheet</h2>
+        <table class="bordered" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">File / Layer</th>
+              <th style="text-align:left; padding:0.5rem; border-bottom: 2px solid var(--border);">Put here</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>pages/*.ts</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Locators + single-page actions + page assertions</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>components/*.ts</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Header, cards, modals used on multiple pages</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>flows/*.ts</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Multi-page business processes (checkout, search)</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>specs/*.ts</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Scenario, test data, high-level expects</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);"><code>BasePage</code></td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Shared header, spinner, navigation helpers</td></tr>
+            <tr><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">UI rename</td><td style="padding:0.5rem; border-bottom: 1px solid var(--border);">Fix one page object, not 50 specs</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div></div>
+</body>
+</html>
