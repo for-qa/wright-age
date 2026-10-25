@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { topics } from '../../data/static/topics';
 
 import { ProgressTracker } from '../components/navigation/ProgressTracker';
-import { QuizSection } from '../components/quiz/QuizSection';
+import { QuizSection, MAX_QUIZ_QUESTIONS_PER_TOPIC } from '../components/quiz/QuizSection';
 import { useSidebar } from '../store/sidebarContext';
 import { getQuizQuestionsUseCase } from '../../data/di/container';
 import { enhanceCodeBlocks } from '../utils/enhanceCodeBlocks';
@@ -14,7 +14,8 @@ function appendTopicExtras(links: SidebarLink[], topicFile: string): SidebarLink
   const next = [...links];
   const quizQs = getQuizQuestionsUseCase.execute(topicFile);
   if (quizQs.length > 0) {
-    next.push({ href: '#self-test', label: `Quick Quiz (${quizQs.length})` });
+    const shown = Math.min(quizQs.length, MAX_QUIZ_QUESTIONS_PER_TOPIC);
+    next.push({ href: '#self-test', label: `Quick Quiz (${shown})` });
   }
   return next;
 }
@@ -126,7 +127,7 @@ export function TopicPage() {
         <ProgressTracker topicFile={topicFile} />
       </div>
       <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
-      <QuizSection topicFile={topicFile} />
+      <QuizSection key={topicFile} topicFile={topicFile} />
     </div>
   );
 }

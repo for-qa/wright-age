@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Question } from '../../../core/entities/Question';
+import { displayQuizOptions, plainQuizOption } from '../../../core/utils/quizOptionText';
 import { submitQuizAnswerUseCase } from '../../../data/di/container';
 
 interface QuizCardProps {
@@ -34,15 +35,30 @@ function seededShuffle<T>(array: T[], seedStr: string): T[] {
   return arr;
 }
 
+/** Options like "Both A and B" break when letters are reshuffled. */
+function hasLetterRelativeOption(options: readonly string[]): boolean {
+  return options.some((opt) => {
+    const plain = plainQuizOption(opt);
+    const lower = plain.toLowerCase();
+    return (
+      /\bboth [A-D]\b/i.test(plain) ||
+      /\b[A-D] and [A-D]\b/.test(plain) ||
+      lower.includes('all of the above') ||
+      lower.includes('none of the above') ||
+      /\boptions? [A-D]\b/i.test(plain)
+    );
+  });
+}
+
 export function QuizCard({ question, index, shuffleSeed, onAnswer }: Readonly<QuizCardProps>) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
-  const [shuffledOptions] = useState(() =>
-    seededShuffle(
-      question.options.map((opt, i) => ({ opt, originalIndex: i })),
-      shuffleSeed
-    )
-  );
+  const [shuffledOptions] = useState(() => {
+    const labels = displayQuizOptions(question.options);
+    const mapped = labels.map((opt, i) => ({ opt, originalIndex: i }));
+    if (hasLetterRelativeOption(question.options)) return mapped;
+    return seededShuffle(mapped, shuffleSeed);
+  });
 
   const handleSelect = (originalIdx: number) => {
     if (selectedIdx !== null) return;
@@ -78,7 +94,7 @@ export function QuizCard({ question, index, shuffleSeed, onAnswer }: Readonly<Qu
   const isCorrect = isAnswered && submitQuizAnswerUseCase.execute(question, selectedIdx);
 
   return (
-    <div className="quiz-card" data-answer={question.answerIndex}>
+    <div className="quiz-card">
       <div className="quiz-q">
         <span className="quiz-num">Q{index + 1}</span>
         <div className="quiz-q-text" dangerouslySetInnerHTML={{ __html: question.question }} />
@@ -109,7 +125,7 @@ export function QuizCard({ question, index, shuffleSeed, onAnswer }: Readonly<Qu
               disabled={isAnswered}
             >
               <span className="quiz-letter">{"ABCD"[oi]}</span>
-              <span dangerouslySetInnerHTML={{ __html: item.opt }} />
+              <span className="quiz-opt-text">{item.opt}</span>
             </button>
           );
         })}
@@ -119,7 +135,8 @@ export function QuizCard({ question, index, shuffleSeed, onAnswer }: Readonly<Qu
         <div className={`quiz-fb ${isCorrect ? 'quiz-fb-correct' : 'quiz-fb-wrong'}`}>
           {isCorrect ? '✅ Correct! ' : '❌ The answer is '}
           <span className="quiz-ans">
-            {"ABCD"[shuffledOptions.findIndex(o => o.originalIndex === question.answerIndex)]}: {question.options[question.answerIndex].replace(/<[^>]*>?/gm, '')}
+            {"ABCD"[shuffledOptions.findIndex(o => o.originalIndex === question.answerIndex)]}:{' '}
+            {plainQuizOption(question.options[question.answerIndex])}
           </span>
 
           {question.explanation && (
@@ -138,7 +155,10 @@ export function QuizCard({ question, index, shuffleSeed, onAnswer }: Readonly<Qu
                         const headerOffset = 60;
                         const elementPosition = el.getBoundingClientRect().top;
                         const offsetPosition = elementPosition + globalThis.scrollY - headerOffset;
-                        globalThis.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+                        globalThis.scrollTo({
+                          top: offsetPosition,
+                          behavior: 'smooth',
+                        });
                         globalThis.history.pushState(null, '', `#${question.section}`);
                       }
                     }}

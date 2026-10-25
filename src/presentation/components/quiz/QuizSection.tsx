@@ -1,10 +1,14 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
+import type { Question } from '../../../core/entities/Question';
 import { getQuizQuestionsUseCase } from '../../../data/di/container';
 import { QuizCard } from './QuizCard';
 
 interface QuizSectionProps {
   readonly topicFile: string;
 }
+
+/** Keep self-tests short enough for one sitting. Full bank stays in data. */
+export const MAX_QUIZ_QUESTIONS_PER_TOPIC = 25;
 
 function hashString(str: string): number {
   let hash = 0;
@@ -15,7 +19,7 @@ function hashString(str: string): number {
   return Math.abs(hash);
 }
 
-function seededShuffle<T>(array: T[], seedStr: string): T[] {
+function seededShuffle<T>(array: readonly T[], seedStr: string): T[] {
   const arr = [...array];
   let seed = hashString(seedStr);
 
@@ -31,31 +35,73 @@ function seededShuffle<T>(array: T[], seedStr: string): T[] {
   return arr;
 }
 
+function newQuizSeed(): string {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return `${Date.now()}-${buf[0]}`;
+}
+
+/**
+ * Build a set of up to MAX questions.
+ * When `avoidKeys` is set (from the previous set), questions not in that set
+ * are taken first so two rounds can cover a bank of ≤ 2×MAX.
+ */
+function pickQuestionSet(
+  bank: readonly Question[],
+  seed: string,
+  avoidKeys?: ReadonlySet<string>,
+): Question[] {
+  if (bank.length === 0) return [];
+  if (!avoidKeys || avoidKeys.size === 0) {
+    return seededShuffle(bank, seed).slice(0, MAX_QUIZ_QUESTIONS_PER_TOPIC);
+  }
+  const missing = bank.filter((q) => !avoidKeys.has(q.question));
+  const alreadyShown = bank.filter((q) => avoidKeys.has(q.question));
+  return [
+    ...seededShuffle(missing, `${seed}-missing`),
+    ...seededShuffle(alreadyShown, `${seed}-rest`),
+  ].slice(0, MAX_QUIZ_QUESTIONS_PER_TOPIC);
+}
+
 export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
   const questions = getQuizQuestionsUseCase.execute(topicFile);
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
-  const [quizSeed] = useState(() => `${Date.now()}-${Math.random()}`);
-
-  const shuffledQuestions = useMemo(() => {
-    if (!questions) return [];
-    return seededShuffle(questions, `${topicFile}-${quizSeed}`);
-  }, [questions, topicFile, quizSeed]);
+  const [setIndex, setSetIndex] = useState(1);
+  const [quizSeed, setQuizSeed] = useState(() => newQuizSeed());
+  const [activeQuestions, setActiveQuestions] = useState<Question[]>(() =>
+    pickQuestionSet(questions ?? [], `${topicFile}-init`),
+  );
 
   const handleAnswer = useCallback((isCorrect: boolean) => {
     if (isCorrect) {
-      setCorrectCount(prev => prev + 1);
+      setCorrectCount((prev) => prev + 1);
     } else {
-      setWrongCount(prev => prev + 1);
+      setWrongCount((prev) => prev + 1);
     }
   }, []);
 
-  if (shuffledQuestions.length === 0) return null;
+  const handleNextSet = useCallback(() => {
+    if (!questions?.length) return;
+    const avoid = new Set(activeQuestions.map((q) => q.question));
+    const seed = newQuizSeed();
+    setQuizSeed(seed);
+    setActiveQuestions(pickQuestionSet(questions, `${topicFile}-${seed}`, avoid));
+    setCorrectCount(0);
+    setWrongCount(0);
+    setSetIndex((n) => n + 1);
+  }, [questions, activeQuestions, topicFile]);
+
+  if (activeQuestions.length === 0) return null;
 
   const totalAnswered = correctCount + wrongCount;
-  const totalQuestions = shuffledQuestions.length;
+  const totalQuestions = activeQuestions.length;
   const allAnswered = totalAnswered === totalQuestions;
   const scorePercent = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+  const bankLarger = questions.length > MAX_QUIZ_QUESTIONS_PER_TOPIC;
+  const missingInBank = bankLarger
+    ? questions.length - activeQuestions.length
+    : 0;
 
   return (
     <div className="sec quiz-sec" id="self-test">
@@ -63,6 +109,7 @@ export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
       <h2>
         <svg
           className="quiz-header-icon"
+          aria-hidden="true"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -77,11 +124,19 @@ export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
           <path d="M14 11h3" />
           <path d="M14 15h3" />
         </svg>
-        <span>Quick Quiz ({shuffledQuestions.length} Questions)</span>
+        <span>
+          Quick Quiz ({activeQuestions.length} questions
+          {bankLarger ? ` · set ${setIndex}` : ''})
+        </span>
       </h2>
-      <p>Test your understanding of every topic on this page. Click an option to check.</p>
+      <p>
+        A short check on this page — click an option to see if you&apos;re right.
+        {bankLarger
+          ? ` Showing ${MAX_QUIZ_QUESTIONS_PER_TOPIC} of ${questions.length}. Use Next set to favour the ${missingInBank} not in this mix.`
+          : null}
+      </p>
       <div className="quiz-grid">
-        {shuffledQuestions.map((q, idx) => (
+        {activeQuestions.map((q, idx) => (
           <QuizCard
             key={`${quizSeed}-${q.question}`}
             question={q}
@@ -92,7 +147,6 @@ export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
         ))}
       </div>
 
-      {/* Score Summary */}
       <div className={`quiz-score-summary${allAnswered ? ' quiz-score-complete' : ''}`}>
         <div className="quiz-score-header">
           <span className="quiz-score-title">
@@ -126,6 +180,16 @@ export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
               <span className="quiz-score-num">{scorePercent}%</span>
             </div>
           )}
+        </div>
+        <div className="quiz-next-row">
+          <button type="button" className="quiz-next-btn" onClick={handleNextSet}>
+            Next set
+          </button>
+          <span className="quiz-next-hint">
+            {bankLarger
+              ? 'Loads a new mix, prioritizing questions missing from this set.'
+              : 'Shuffles a fresh order of these questions.'}
+          </span>
         </div>
       </div>
     </div>
