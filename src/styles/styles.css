@@ -1716,10 +1716,14 @@ hr{border:none;border-top:1px solid var(--border);margin:1.75rem 0}
   border-color:var(--blue);
   color:#fff;
 }
-.quiz-clear-answers-btn:hover{
+.quiz-clear-answers-btn:hover:not(:disabled){
   background:var(--amber);
   border-color:var(--amber);
   color:#fff;
+}
+.quiz-clear-answers-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
 }
 .quiz-sec h2 {
   display: flex;

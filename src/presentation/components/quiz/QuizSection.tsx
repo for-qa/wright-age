@@ -182,16 +182,15 @@ export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
           >
             {isShuffled ? 'Reshuffle' : 'Shuffle'}
           </button>
-          {hasAnswers && (
-            <button
-              type="button"
-              className="quiz-clear-answers-btn"
-              onClick={handleClearAnswers}
-              aria-label="Clear saved quiz answers"
-            >
-              Clear answers
-            </button>
-          )}
+          <button
+            type="button"
+            className="quiz-clear-answers-btn"
+            onClick={handleClearAnswers}
+            disabled={!hasAnswers}
+            aria-label="Clear saved quiz answers"
+          >
+            Clear answers
+          </button>
         </div>
       </div>
       <h2>
