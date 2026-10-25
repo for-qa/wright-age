@@ -56,7 +56,7 @@ export function QuizCard({ question, index, shuffleSeed, onAnswer }: Readonly<Qu
   const [shuffledOptions] = useState(() => {
     const labels = displayQuizOptions(question.options);
     const mapped = labels.map((opt, i) => ({ opt, originalIndex: i }));
-    if (hasLetterRelativeOption(question.options)) return mapped;
+    if (!shuffleSeed || hasLetterRelativeOption(question.options)) return mapped;
     return seededShuffle(mapped, shuffleSeed);
   });
 
