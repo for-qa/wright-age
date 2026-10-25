@@ -7,6 +7,9 @@ interface QuizSectionProps {
   readonly topicFile: string;
 }
 
+/** question HTML → selected option originalIndex */
+type AnswerMap = Record<string, number>;
+
 function hashString(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -38,13 +41,21 @@ function newQuizSeed(): string {
   return `${Date.now()}-${buf[0]}`;
 }
 
-function storageKey(topicFile: string): string {
+function shuffleStorageKey(topicFile: string): string {
   return `quiz-shuffle:${topicFile}`;
+}
+
+function answersStorageKey(topicFile: string): string {
+  return `quiz-answers:${topicFile}`;
+}
+
+function questionKey(q: Question): string {
+  return q.question;
 }
 
 function readStoredSeed(topicFile: string): string | null {
   try {
-    const value = localStorage.getItem(storageKey(topicFile));
+    const value = localStorage.getItem(shuffleStorageKey(topicFile));
     return value && value.length > 0 ? value : null;
   } catch {
     return null;
@@ -53,10 +64,52 @@ function readStoredSeed(topicFile: string): string | null {
 
 function writeStoredSeed(topicFile: string, seed: string): void {
   try {
-    localStorage.setItem(storageKey(topicFile), seed);
+    localStorage.setItem(shuffleStorageKey(topicFile), seed);
   } catch {
     /* private mode / quota — ignore */
   }
+}
+
+function readStoredAnswers(topicFile: string): AnswerMap {
+  try {
+    const raw = localStorage.getItem(answersStorageKey(topicFile));
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: AnswerMap = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value === 'number' && Number.isInteger(value) && value >= 0) {
+        out[key] = value;
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredAnswers(topicFile: string, answers: AnswerMap): void {
+  try {
+    if (Object.keys(answers).length === 0) {
+      localStorage.removeItem(answersStorageKey(topicFile));
+    } else {
+      localStorage.setItem(answersStorageKey(topicFile), JSON.stringify(answers));
+    }
+  } catch {
+    /* private mode / quota — ignore */
+  }
+}
+
+function scoreFromAnswers(questions: readonly Question[], answers: AnswerMap): { correct: number; wrong: number } {
+  let correct = 0;
+  let wrong = 0;
+  for (const q of questions) {
+    const selected = answers[questionKey(q)];
+    if (selected === undefined) continue;
+    if (selected === q.answerIndex) correct += 1;
+    else wrong += 1;
+  }
+  return { correct, wrong };
 }
 
 function orderQuestions(bank: readonly Question[], seed: string | null): Question[] {
@@ -73,25 +126,39 @@ export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
   const [activeQuestions, setActiveQuestions] = useState<Question[]>(() =>
     orderQuestions(getQuizQuestionsUseCase.execute(topicFile) ?? [], readStoredSeed(topicFile)),
   );
-  const [correctCount, setCorrectCount] = useState(0);
-  const [wrongCount, setWrongCount] = useState(0);
+  const [answers, setAnswers] = useState<AnswerMap>(() => readStoredAnswers(topicFile));
+  const [answersEpoch, setAnswersEpoch] = useState(0);
 
-  const handleAnswer = useCallback((isCorrect: boolean) => {
-    if (isCorrect) {
-      setCorrectCount((prev) => prev + 1);
-    } else {
-      setWrongCount((prev) => prev + 1);
-    }
-  }, []);
+  const { correct: correctCount, wrong: wrongCount } = useMemo(
+    () => scoreFromAnswers(activeQuestions, answers),
+    [activeQuestions, answers],
+  );
+
+  const handleAnswer = useCallback(
+    (q: Question, selectedOriginalIdx: number) => {
+      const key = questionKey(q);
+      setAnswers((prev) => {
+        if (Object.hasOwn(prev, key)) return prev;
+        const next = { ...prev, [key]: selectedOriginalIdx };
+        writeStoredAnswers(topicFile, next);
+        return next;
+      });
+    },
+    [topicFile],
+  );
 
   const handleShuffle = useCallback(() => {
     const seed = newQuizSeed();
     writeStoredSeed(topicFile, seed);
     setShuffleSeed(seed);
     setActiveQuestions(orderQuestions(bank, seed));
-    setCorrectCount(0);
-    setWrongCount(0);
   }, [bank, topicFile]);
+
+  const handleClearAnswers = useCallback(() => {
+    writeStoredAnswers(topicFile, {});
+    setAnswers({});
+    setAnswersEpoch((n) => n + 1);
+  }, [topicFile]);
 
   if (activeQuestions.length === 0) return null;
 
@@ -100,19 +167,32 @@ export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
   const allAnswered = totalAnswered === totalQuestions;
   const scorePercent = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
   const isShuffled = shuffleSeed !== null;
+  const hasAnswers = Object.keys(answers).length > 0;
 
   return (
     <div className="sec quiz-sec" id="self-test">
       <div className="quiz-sec-label-row">
         <div className="sec-label">Self Test</div>
-        <button
-          type="button"
-          className="quiz-shuffle-btn"
-          onClick={handleShuffle}
-          aria-label={isShuffled ? 'Reshuffle quiz questions and options' : 'Shuffle quiz questions and options'}
-        >
-          {isShuffled ? 'Reshuffle' : 'Shuffle'}
-        </button>
+        <div className="quiz-sec-actions">
+          <button
+            type="button"
+            className="quiz-shuffle-btn"
+            onClick={handleShuffle}
+            aria-label={isShuffled ? 'Reshuffle quiz questions and options' : 'Shuffle quiz questions and options'}
+          >
+            {isShuffled ? 'Reshuffle' : 'Shuffle'}
+          </button>
+          {hasAnswers && (
+            <button
+              type="button"
+              className="quiz-clear-answers-btn"
+              onClick={handleClearAnswers}
+              aria-label="Clear saved quiz answers"
+            >
+              Clear answers
+            </button>
+          )}
+        </div>
       </div>
       <h2>
         <svg
@@ -139,15 +219,17 @@ export function QuizSection({ topicFile }: Readonly<QuizSectionProps>) {
         {isShuffled
           ? ' Order is shuffled and saved in this browser until you reshuffle.'
           : ' Click Shuffle to randomize question and option order (saved until you reshuffle).'}
+        {' '}Answers stay saved until you clear them.
       </p>
       <div className="quiz-grid">
         {activeQuestions.map((q, idx) => (
           <QuizCard
-            key={`${shuffleSeed ?? 'natural'}-${idx}-${q.question}`}
+            key={`${shuffleSeed ?? 'natural'}-${answersEpoch}-${idx}-${q.question}`}
             question={q}
             index={idx}
             shuffleSeed={shuffleSeed ? `${shuffleSeed}-${idx}-${q.question}` : ''}
-            onAnswer={handleAnswer}
+            savedSelectedIdx={answers[questionKey(q)] ?? null}
+            onAnswer={(selectedOriginalIdx) => handleAnswer(q, selectedOriginalIdx)}
           />
         ))}
       </div>

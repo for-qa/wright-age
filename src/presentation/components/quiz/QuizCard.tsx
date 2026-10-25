@@ -7,7 +7,9 @@ interface QuizCardProps {
   question: Question;
   index: number;
   shuffleSeed: string;
-  onAnswer?: (isCorrect: boolean) => void;
+  /** Restored from localStorage (original option index), if any. */
+  savedSelectedIdx?: number | null;
+  onAnswer?: (selectedOriginalIndex: number) => void;
 }
 
 function hashString(str: string): number {
@@ -50,8 +52,14 @@ function hasLetterRelativeOption(options: readonly string[]): boolean {
   });
 }
 
-export function QuizCard({ question, index, shuffleSeed, onAnswer }: Readonly<QuizCardProps>) {
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+export function QuizCard({
+  question,
+  index,
+  shuffleSeed,
+  savedSelectedIdx = null,
+  onAnswer,
+}: Readonly<QuizCardProps>) {
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(() => savedSelectedIdx);
 
   const [shuffledOptions] = useState(() => {
     const labels = displayQuizOptions(question.options);
@@ -63,7 +71,7 @@ export function QuizCard({ question, index, shuffleSeed, onAnswer }: Readonly<Qu
   const handleSelect = (originalIdx: number) => {
     if (selectedIdx !== null) return;
     setSelectedIdx(originalIdx);
-    onAnswer?.(originalIdx === question.answerIndex);
+    onAnswer?.(originalIdx);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
